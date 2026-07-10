@@ -2,6 +2,7 @@
 // and that the package "exports" map resolves. SQLite-dependent paths run only
 // where a driver exists (Node 22.5+); the rest must work everywhere (Node 20+).
 import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
 import { formatNtfyRef, generateInvitePrompt, generateKey, isVisibleTo, parseRef } from '../dist/index.js'
 
 const assert = (cond, msg) => {
@@ -15,7 +16,7 @@ const assert = (cond, msg) => {
 const ref = formatNtfyRef({ server: 'https://ntfy.sh', topic: 'ap-smoke', key: generateKey() })
 const parsed = parseRef(ref)
 assert(parsed.scheme === 'ntfy' && parsed.topic === 'ap-smoke', 'ntfy ref should round-trip')
-assert(parseRef('local:/tmp/party.sqlite').path === '/tmp/party.sqlite', 'local ref should round-trip')
+assert(parseRef('local:/tmp/party.sqlite').path === resolve('/tmp/party.sqlite'), 'local ref should round-trip')
 assert(isVisibleTo({ from: 'a', to: ['b'] }, 'b') === true, 'visibility rule should hold')
 assert(
   generateInvitePrompt({ ref, guestName: 'smokey' }).includes(`'${ref}'`),

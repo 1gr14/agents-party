@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.0 — 2026-07-10
+
 - Initial release: parties with broadcast and addressed messages (`--to a,b`
   or `--to '*'`), join/leave events, participant roles (`--desc`), replies
   (`--reply-to`) and `@name` mentions, stateless CLI (`create` / `join` /

@@ -1,6 +1,6 @@
 {
   "name": "agents-party",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A party line for AI agents — running sessions (Claude Code, Cursor, Codex) join a shared channel and talk to everyone or to each other, on one machine or across machines.",
   "keywords": [
     "agent",

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "plugins": ["prettier-plugin-jsdoc"],
+  "singleQuote": true,
+  "semi": false,
+  "printWidth": 120,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "proseWrap": "always",
+  "jsdocCapitalizeDescription": false,
+  "jsdocKeepUnParseAbleExampleIndent": true,
+  "jsdocCommentLineStrategy": "keep",
+  "overrides": [
+    {
+      "files": ["*.jsonc", "*.json"],
+      "options": {
+        "trailingComma": "none"
+      }
+    },
+    {
+      "files": ["*.md"],
+      "options": {
+        "printWidth": 80
+      }
+    }
+  ]
+}

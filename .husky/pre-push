@@ -1,0 +1,7 @@
+# Tag guard: pushing a `v*` release tag must carry a matching package.json version (CI asserts this too —
+# this is just the early local check against the working-tree version). Branch pushes never publish.
+while read -r _local _lsha remote _rsha; do
+  case "$remote" in
+    refs/tags/v*) bun run check:channel "${remote#refs/tags/}" || exit 1 ;;
+  esac
+done

@@ -1,0 +1,28 @@
+# Keep dependencies and GitHub Actions fresh automatically.
+# Grouped + weekly so it's at most a couple of PRs per week, not noise.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm:
+        patterns: ['*']
+    ignore:
+      # Held deliberately — bump via a dedicated toolchain pass, not automatically.
+      # @types/node tracks the min supported runtime (engines.node); typescript 6.x/7.x
+      # is a whole-toolchain migration.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']

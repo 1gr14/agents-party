@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussions
+    url: https://github.com/1gr14/agents-party/discussions
+    about: Ask a question or share an idea before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/1gr14/agents-party/security/advisories/new
+    about: Report a security issue privately via GitHub Security Advisories.

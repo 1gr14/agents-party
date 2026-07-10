@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a bug to help us improve agents-party
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill in as much of the template as possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: |
+        A minimal code snippet that reproduces the issue. A link to a runnable repro (StackBlitz, CodeSandbox, GitHub repo) is ideal.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include any error messages or stack traces.
+    validations:
+      required: true
+  - type: input
+    id: agents-party-version
+    attributes:
+      label: 'agents-party version'
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime
+      description: Node / Bun / Deno version
+      placeholder: e.g. Node 22.10.0, Bun 1.3.14
+    validations:
+      required: true
+  - type: input
+    id: typescript
+    attributes:
+      label: TypeScript version
+      placeholder: e.g. 5.9.3
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. macOS 14.5, Ubuntu 24.04, Windows 11
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant.

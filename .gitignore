@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-test/
+dist-npm/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Output of 'npm pack'
+*.tgz
+
+# Temporary folders
+temp/
+test-temp*/
+
+# Secrets and sensitive files
+secrets/
+*.pem
+*.key
+*.crt
+
+# Force ignored files
+*.ignore*
+
+# Task0
+tasks
+todo.md
+todo.txt

@@ -1,0 +1,172 @@
+name: CI
+
+# Classic OSS model: one `main` trunk, contributors fork → PR → `main`, and a `v*` tag is the only thing
+# that publishes. Pushing code never releases.
+#   pull_request → main   the gate: build + type-check + lint + tests + smoke (forks run without secrets)
+#   push tag v*           the same gate, then publish (dist-tag from the version)
+# `main` is not gated on push — it only changes via an already-tested PR or a release commit (gated by its
+# tag), so a push-to-main gate would just re-test. Run the gate on a branch ad-hoc with workflow_dispatch.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC: npm Trusted Publisher (provenance) + tokenless Codecov
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never cancel a tag publish mid-flight
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Setup Bun latest
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check (TypeScript 7)
+        run: bun run types
+
+      - name: Type check (TypeScript 6)
+        run: bun run types:6
+
+      - name: Lint (eslint)
+        run: bun run lint
+
+      - name: Source tests
+        run: bun test ./src --coverage --coverage-reporter=text --coverage-reporter=lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage/lcov.info
+          slug: 1gr14/agents-party
+          use_oidc: true # tokenless: GitHub OIDC + the Codecov GitHub App (no stored token)
+          fail_ci_if_error: false # coverage is informational for now — never fail CI on it
+
+      - name: Build
+        run: bun run build
+
+      - name: Check published package (publint + are-the-types-wrong)
+        run: bun run check:package
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-files
+          path: |
+            dist/
+            scripts/
+            package.json
+          retention-days: 1
+
+  # Windows gate: agents-party guests are often on Windows boxes, so the CLI
+  # (paths, quoting, sqlite, spawn) must actually run there — not just on CI Linux.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun latest
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Source tests
+        run: bun test ./src
+
+      - name: Build
+        run: bun run build
+
+      - name: Smoke test built package (Node on Windows)
+        run: node scripts/smoke.mjs
+
+  smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+          - 22
+          - 24
+
+    steps:
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-files
+          path: .
+
+      - name: Smoke test built package
+        run: node scripts/smoke.mjs
+
+  # Publish to npm — ONLY on a `v*` tag (never from a PR or a branch push; a fork can't push a tag, so
+  # untrusted code can never publish). Idempotent: publishes only if the version isn't on npm yet (bumps
+  # happen locally via `bun run release`). dist-tag is derived from the version (prerelease x.y.z-next.N →
+  # next, stable x.y.z → latest). Auth is npm OIDC Trusted Publisher (→ provenance), no NPM_TOKEN — the
+  # workflow filename (ci.yml) must match the trusted-publisher config on npm.
+  publish:
+    needs: [smoke, windows]
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_type == 'tag' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          scope: '@1gr14'
+
+      - name: Upgrade npm (OIDC Trusted Publisher needs npm >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-files
+          path: .
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Tag guard: the tag MUST equal v${version in package.json}, so the bump and the tag can't drift.
+      - name: Channel guard (tag ↔ version)
+        run: bun run check:channel
+
+      - name: Publish package
+        run: bun run publish:packages

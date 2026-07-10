@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.2.0 — 2026-07-10
+
 - **Breaking:** "everyone" is now spelled `'*'` in the public model —
   `Recipients` is `'*' | string[]`, `Message.to`/JSON output/`isVisibleTo`/
   `concernsParticipant` all use `'*'` (matching the `--to '*'` CLI selector).

@@ -67,7 +67,7 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
   const refArg = z
     .string()
     .optional()
-    .describe('Party ref (local:… or ntfy:…); omit if the server was started with --ref')
+    .describe('Party ref (local:…, ntfy:… or party:…); omit if the server was started with --ref')
   const asArg = z.string().optional().describe('Your participant name; omit if the server was started with --as')
 
   server.registerTool(

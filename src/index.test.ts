@@ -34,7 +34,7 @@ describe('public API', () => {
       expect(typeof value === 'function').toBe(true)
     }
     expect(DEFAULT_NTFY_SERVER).toBe('https://ntfy.sh')
-    expect(KNOWN_SCHEMES).toEqual(['local', 'ntfy'])
+    expect(KNOWN_SCHEMES).toEqual(['local', 'ntfy', 'party'])
   })
 
   it('visibility rule: broadcasts for all, DMs for recipients and sender', () => {

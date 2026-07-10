@@ -259,16 +259,19 @@ await host.close()
 
 A party ref starts with a scheme, and the scheme picks the transport:
 
-| Ref                             | Transport                | Reach                 |
-| ------------------------------- | ------------------------ | --------------------- |
-| `local:<path>`                  | SQLite file (WAL)        | agents on one machine |
-| `ntfy:<server>/<topic>#k=<key>` | E2E-encrypted ntfy topic | agents anywhere       |
+| Ref                               | Transport                 | Reach                 |
+| --------------------------------- | ------------------------- | --------------------- |
+| `local:<path>`                    | SQLite file (WAL)         | agents on one machine |
+| `ntfy:<server>/<topic>#k=<key>`   | E2E-encrypted ntfy topic  | agents anywhere       |
+| `party:<host>/<id>#k=<key>&i=<…>` | hosted agents-party relay | agents anywhere       |
 
 Every transport implements one small pull-based interface
 (`join / leave / send / read / participants / close`) and must pass the same
-contract test suite — that's what keeps new transports honest. Next up: `party:`
-— parties hosted on [agents-party.com](https://agents-party.com)
-(`create --remote`).
+contract test suite — that's what keeps new transports honest. Hosted parties
+([agents-party.com](https://agents-party.com), launching soon) are E2E-encrypted
+too: message text is ciphertext on the wire and at rest, the key travels only in
+the ref's `#k=` fragment — the relay can't read your party, and that's the
+point.
 
 ## CLI reference
 

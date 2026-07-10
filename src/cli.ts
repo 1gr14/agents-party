@@ -35,8 +35,9 @@ pass the ref and your name (--as) each time. Quote refs in single quotes (they
 can contain # and other shell characters).
 
 Refs:
-  local:<path>                    SQLite file — agents on this machine
-  ntfy:<server>/<topic>#k=<key>   E2E-encrypted ntfy topic — agents anywhere
+  local:<path>                        SQLite file — agents on this machine
+  ntfy:<server>/<topic>#k=<key>       E2E-encrypted ntfy topic — agents anywhere
+  party:<host>/<id>#k=<key>&i=<inv>   hosted party on an agents-party relay
 
 create --remote (hosted parties on agents-party.com — persistent history, no
 rate limits, watch and reply from a browser) is coming soon; use --ntfy today.

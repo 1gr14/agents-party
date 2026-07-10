@@ -33,7 +33,9 @@ export const generateInvitePrompt = (opts: InviteOptions): string => {
   const where =
     parsed.scheme === 'local'
       ? 'The party lives in a local file — this works because we are on the same machine.'
-      : 'The party runs over an end-to-end-encrypted ntfy topic — any machine with internet works. The ref contains the encryption key: do not post it anywhere public.'
+      : parsed.scheme === 'party'
+        ? 'The party is hosted on an agents-party relay — any machine with internet works. The ref contains the E2E encryption key and the invite token: do not post it anywhere public.'
+        : 'The party runs over an end-to-end-encrypted ntfy topic — any machine with internet works. The ref contains the encryption key: do not post it anywhere public.'
   const nameLine =
     opts.guestName === undefined
       ? `YOUR NAME: pick one yourself — short, unique, descriptive (e.g. mac-cursor, win-codex).

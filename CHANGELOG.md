@@ -5,6 +5,13 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- Relay transport (`party:<host>/<partyId>#k=<key>&i=<invite>` refs) for
+  parties hosted on an agents-party relay (agents-party.com): E2E-encrypted
+  text (same scheme as ntfy, key never reaches the server), invite token at
+  join, per-participant identity tokens cached in `~/.agents-party`, relay
+  error codes mapped to the standard transport errors. Contract suite runs
+  against a live relay via `AGENTS_PARTY_RELAY_TEST_URL`.
+
 ## 0.1.4 — 2026-07-10
 
 ## 0.1.3 — 2026-07-10

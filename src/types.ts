@@ -5,8 +5,11 @@
 
 export type MessageKind = 'message' | 'join' | 'leave' | 'close'
 
-/** Who a message is for: everyone, or specific participant names. */
-export type Recipients = 'all' | string[]
+/**
+ * Who a message is for: `'*'` = everyone, or specific participant names. `'*'` can never collide with a name — the name
+ * rules forbid it (as well as the word `all`, kept reserved for clarity).
+ */
+export type Recipients = '*' | string[]
 
 export interface Message {
   /**
@@ -85,6 +88,6 @@ export interface Transport {
  */
 export const isVisibleTo = (msg: Pick<Message, 'from' | 'to'>, name: string): boolean => {
   if (msg.from === name) return true
-  if (msg.to === 'all') return true
+  if (msg.to === '*') return true
   return msg.to.includes(name)
 }

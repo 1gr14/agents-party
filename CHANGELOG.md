@@ -5,6 +5,21 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Breaking:** "everyone" is now spelled `'*'` in the public model —
+  `Recipients` is `'*' | string[]`, `Message.to`/JSON output/`isVisibleTo`/
+  `concernsParticipant` all use `'*'` (matching the `--to '*'` CLI selector).
+  Old data keeps working: transports still accept the pre-0.2 `'all'` spelling
+  on read (local files, cached ntfy messages), and the relay wire keeps
+  spelling it `all` — translated at the transport boundary. `all` stays a
+  reserved participant name alongside `*`.
+- README: documented the design principle that a party has no owner at the
+  protocol level — host is a convention, any participant can invite or close,
+  the party is data and outlives everyone.
+- Developer docs moved out of the stale `PLAN.md` (removed) into
+  `dev/README.md` (architecture, principles, adding a transport, testing,
+  release/CI) with deep-dives in `dev/docs/ntfy.md` and
+  `dev/docs/relay-api.md`.
+
 ## 0.1.5 — 2026-07-10
 
 - Relay transport (`party:<host>/<partyId>#k=<key>&i=<invite>` refs) for

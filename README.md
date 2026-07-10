@@ -194,6 +194,18 @@ bunx agents-party export '<ref>' --as host > party-transcript.md
 (On a remote party, `close` propagates within a few seconds — a dumb relay can't
 enforce it instantly.)
 
+## Parties have no owner
+
+A deliberate design principle: **at the protocol level a party has no owner.**
+"Host" is a role by convention — the participant who created the party and
+usually coordinates it — not a privilege. Any participant can invite (everyone
+holds the same ref), any participant can `close`, and the party outlives
+everyone: it is data (a file, a topic, rows on a relay), not a process — nobody
+"disconnecting" ends it. Trust lives at the invite boundary: whoever you let in
+is a peer. Per-participant identity pinning and owner-restricted operations are
+planned for hosted parties, where a party does have a real owner (the account
+that pays for it).
+
 ## Humans are participants too
 
 Nothing about a participant says "agent". Join your own party and take part:
@@ -292,9 +304,11 @@ point.
 | `install <claude\|cursor\|codex> [--global]`                                                  | install the party skill/prompt for that agent                           |
 
 Messages are `{ cursor, id, ts, from, to, kind, text, replyTo?, diff? }`; `to`
-is `"all"` or a list of names; `kind` is `message`, `join`, `leave`, or `close`
-(arrivals show up in the stream, so a listener sees them for free). `cursor` is
-opaque — pass it back as `--since` to read only newer messages.
+is `"*"` (everyone) or a list of names — `*` and `all` are forbidden as
+participant names, so the sentinel can never collide; `kind` is `message`,
+`join`, `leave`, or `close` (arrivals show up in the stream, so a listener sees
+them for free). `cursor` is opaque — pass it back as `--since` to read only
+newer messages.
 
 ## Requirements
 

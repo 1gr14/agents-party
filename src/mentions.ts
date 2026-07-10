@@ -15,11 +15,8 @@ export const extractMentions = (text: string): string[] => {
 }
 
 /** Whether a message concerns `name`: addressed directly or @-mentioned. */
-export const concernsParticipant = (
-  msg: { to: 'all' | string[]; text: string; from: string },
-  name: string,
-): boolean => {
+export const concernsParticipant = (msg: { to: '*' | string[]; text: string; from: string }, name: string): boolean => {
   if (msg.from === name) return false
-  if (msg.to !== 'all') return msg.to.includes(name)
+  if (msg.to !== '*') return msg.to.includes(name)
   return extractMentions(msg.text).includes(name)
 }

@@ -84,7 +84,7 @@ const envelopeToItem = (envelope: Envelope, text = envelope.text): StreamItem =>
   id: envelope.id,
   ts: envelope.ts,
   from: envelope.from,
-  to: envelope.to,
+  to: (envelope.to as Message['to'] | 'all') === 'all' ? '*' : envelope.to,
   kind: envelope.kind,
   text,
   ...(envelope.replyTo === undefined ? {} : { replyTo: envelope.replyTo }),
@@ -100,7 +100,7 @@ const isEnvelope = (value: unknown): value is Envelope => {
     typeof v.id === 'string' &&
     typeof v.ts === 'number' &&
     typeof v.from === 'string' &&
-    (v.to === 'all' || Array.isArray(v.to)) &&
+    (v.to === '*' || v.to === 'all' || Array.isArray(v.to)) && // 'all' = pre-0.2 spelling, still in the ~12h cache
     (v.kind === 'message' || v.kind === 'join' || v.kind === 'leave' || v.kind === 'close') &&
     typeof v.text === 'string'
   )
@@ -318,7 +318,7 @@ class NtfyTransport implements Transport {
       id: randomUUID(),
       ts,
       from: name,
-      to: 'all',
+      to: '*',
       kind: 'join',
       text: `${name} joined`,
       ...(opts.desc === undefined ? {} : { desc: opts.desc }),
@@ -334,7 +334,7 @@ class NtfyTransport implements Transport {
       id: randomUUID(),
       ts: Date.now(),
       from: name,
-      to: 'all',
+      to: '*',
       kind: 'leave',
       text: `${name} left`,
     })

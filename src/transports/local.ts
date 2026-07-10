@@ -20,7 +20,8 @@ const rowToMessage = (row: Record<string, unknown>): Message => ({
   id: String(row.id),
   ts: Number(row.ts),
   from: String(row.sender),
-  to: row.recipients === 'all' ? 'all' : (JSON.parse(String(row.recipients)) as string[]),
+  // 'all' is the pre-0.2 spelling of '*' — old party files keep working.
+  to: row.recipients === '*' || row.recipients === 'all' ? '*' : (JSON.parse(String(row.recipients)) as string[]),
   kind: row.kind as Message['kind'],
   text: String(row.text),
   ...(row.reply_to == null ? {} : { replyTo: String(row.reply_to) }),
@@ -35,7 +36,7 @@ class LocalTransport implements Transport {
   private insertMessage(msg: NewMessage): Promise<Message> {
     const id = randomUUID()
     const ts = Date.now()
-    const recipients = msg.to === 'all' ? 'all' : JSON.stringify(msg.to)
+    const recipients = msg.to === '*' ? '*' : JSON.stringify(msg.to)
     const result = this.db.run(
       'INSERT INTO messages (id, ts, sender, recipients, kind, text, reply_to, diff) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, ts, msg.from, recipients, msg.kind, msg.text, msg.replyTo ?? null, msg.diff === true ? 1 : 0],
@@ -66,13 +67,13 @@ class LocalTransport implements Transport {
     if (result.changes === 0) {
       throw new Error(`The name "${name}" is already taken at this party — pick another one.`)
     }
-    await this.insertMessage({ from: name, to: 'all', kind: 'join', text: `${name} joined` })
+    await this.insertMessage({ from: name, to: '*', kind: 'join', text: `${name} joined` })
     return { name, joinedTs: now, ...(opts.desc === undefined ? {} : { desc: opts.desc }) }
   }
 
   async leave(name: string): Promise<void> {
     if (!this.isActive(name)) return
-    await this.insertMessage({ from: name, to: 'all', kind: 'leave', text: `${name} left` })
+    await this.insertMessage({ from: name, to: '*', kind: 'leave', text: `${name} left` })
     this.db.run('UPDATE participants SET left_ts = ? WHERE name = ?', [Date.now(), name])
   }
 

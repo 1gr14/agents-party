@@ -23,11 +23,11 @@ describe('concernsParticipant', () => {
   })
 
   it('matches @-mentions in broadcasts', () => {
-    expect(concernsParticipant({ from: 'a', to: 'all', text: 'ping @b' }, 'b')).toBe(true)
-    expect(concernsParticipant({ from: 'a', to: 'all', text: 'general chatter' }, 'b')).toBe(false)
+    expect(concernsParticipant({ from: 'a', to: '*', text: 'ping @b' }, 'b')).toBe(true)
+    expect(concernsParticipant({ from: 'a', to: '*', text: 'general chatter' }, 'b')).toBe(false)
   })
 
   it('never matches own messages', () => {
-    expect(concernsParticipant({ from: 'b', to: 'all', text: 'note to self @b' }, 'b')).toBe(false)
+    expect(concernsParticipant({ from: 'b', to: '*', text: 'note to self @b' }, 'b')).toBe(false)
   })
 })

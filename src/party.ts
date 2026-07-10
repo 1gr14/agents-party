@@ -36,7 +36,7 @@ export class PartyClient {
   send(text: string, opts: { to?: Recipients; replyTo?: string; diff?: boolean } = {}): Promise<Message> {
     return this.transport.send({
       from: this.name,
-      to: opts.to ?? 'all',
+      to: opts.to ?? '*',
       kind: 'message',
       text,
       ...(opts.replyTo === undefined ? {} : { replyTo: opts.replyTo }),
@@ -48,7 +48,7 @@ export class PartyClient {
   endParty(): Promise<Message> {
     return this.transport.send({
       from: this.name,
-      to: 'all',
+      to: '*',
       kind: 'close',
       text: `party closed by ${this.name}`,
     })

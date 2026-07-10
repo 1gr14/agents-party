@@ -222,7 +222,7 @@ describe('cli', () => {
     cli('join', ref, '--as', 'guest')
     const sent = cli('send', ref, '--as', 'host', '--to', '*', 'to everyone')
     expect(sent.code).toBe(0)
-    expect(sent.stdout).toContain('→ all')
+    expect(sent.stdout).toContain('→ *')
     expect(cli('read', ref, '--as', 'guest').stdout).toContain('to everyone')
   })
 

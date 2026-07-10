@@ -38,7 +38,7 @@ describe('public API', () => {
   })
 
   it('visibility rule: broadcasts for all, DMs for recipients and sender', () => {
-    expect(isVisibleTo({ from: 'a', to: 'all' }, 'b')).toBe(true)
+    expect(isVisibleTo({ from: 'a', to: '*' }, 'b')).toBe(true)
     expect(isVisibleTo({ from: 'a', to: ['b'] }, 'b')).toBe(true)
     expect(isVisibleTo({ from: 'a', to: ['b'] }, 'c')).toBe(false)
     expect(isVisibleTo({ from: 'a', to: ['b'] }, 'a')).toBe(true)
@@ -54,7 +54,7 @@ function assertTypes() {
 
   expectTypeOf<Message['cursor']>().toBeString()
   expectTypeOf<Message['to']>().toEqualTypeOf<Recipients>()
-  expectTypeOf<Recipients>().toEqualTypeOf<'all' | string[]>()
+  expectTypeOf<Recipients>().toEqualTypeOf<'*' | string[]>()
   expectTypeOf<Message['kind']>().toEqualTypeOf<'message' | 'join' | 'leave' | 'close'>()
   expectTypeOf<Participant['leftTs']>().toEqualTypeOf<number | undefined>()
 

@@ -70,7 +70,7 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
     it('rejects sends from someone who never joined', async () => {
       const party = await makeParty()
       const t = await party.connectAs('ghost')
-      const error = await expectRejection(t.send({ from: 'ghost', to: 'all', kind: 'message', text: 'boo' }))
+      const error = await expectRejection(t.send({ from: 'ghost', to: '*', kind: 'message', text: 'boo' }))
       expect(error.message).toContain('join first')
       await t.close()
     })
@@ -81,7 +81,7 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const b = await party.connectAs('b')
       await a.join('a')
       await b.join('b')
-      await a.send({ from: 'a', to: 'all', kind: 'message', text: 'hello all' })
+      await a.send({ from: 'a', to: '*', kind: 'message', text: 'hello all' })
       for (const [t, name] of [
         [a, 'a'],
         [b, 'b'],
@@ -117,8 +117,8 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const party = await makeParty()
       const t = await party.connectAs('a')
       await t.join('a')
-      const first = await t.send({ from: 'a', to: 'all', kind: 'message', text: 'one' })
-      await t.send({ from: 'a', to: 'all', kind: 'message', text: 'two' })
+      const first = await t.send({ from: 'a', to: '*', kind: 'message', text: 'one' })
+      await t.send({ from: 'a', to: '*', kind: 'message', text: 'two' })
       const after = await t.read({ for: 'a', since: first.cursor })
       expect(after.map((m) => m.text)).toEqual(['two'])
       await t.close()
@@ -128,7 +128,7 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const party = await makeParty()
       const t = await party.connectAs('a')
       await t.join('a')
-      await t.send({ from: 'a', to: 'all', kind: 'message', text: 'tail' })
+      await t.send({ from: 'a', to: '*', kind: 'message', text: 'tail' })
       const all = await t.read({ for: 'a' })
       const last = all.at(-1)
       expect(last).toBeDefined()
@@ -156,7 +156,7 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const t = await party.connectAs('a')
       await t.join('a')
       for (let i = 0; i < 5; i++) {
-        await t.send({ from: 'a', to: 'all', kind: 'message', text: `msg ${i}` })
+        await t.send({ from: 'a', to: '*', kind: 'message', text: `msg ${i}` })
       }
       const texts = (await t.read({ for: 'a' })).filter((m) => m.kind === 'message').map((m) => m.text)
       expect(texts).toEqual(['msg 0', 'msg 1', 'msg 2', 'msg 3', 'msg 4'])
@@ -177,8 +177,8 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const party = await makeParty()
       const t = await party.connectAs('a')
       await t.join('a')
-      const original = await t.send({ from: 'a', to: 'all', kind: 'message', text: 'question' })
-      await t.send({ from: 'a', to: 'all', kind: 'message', text: 'answer', replyTo: original.id })
+      const original = await t.send({ from: 'a', to: '*', kind: 'message', text: 'question' })
+      await t.send({ from: 'a', to: '*', kind: 'message', text: 'answer', replyTo: original.id })
       const answer = (await t.read({ for: 'a' })).find((m) => m.text === 'answer')
       expect(answer?.replyTo).toBe(original.id)
       await t.close()
@@ -189,8 +189,8 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const t = await party.connectAs('a')
       await t.join('a')
       const patch = '--- a/f.ts\n+++ b/f.ts\n@@ -1 +1 @@\n-old\n+new\n'
-      await t.send({ from: 'a', to: 'all', kind: 'message', text: patch, diff: true })
-      await t.send({ from: 'a', to: 'all', kind: 'message', text: 'plain words' })
+      await t.send({ from: 'a', to: '*', kind: 'message', text: patch, diff: true })
+      await t.send({ from: 'a', to: '*', kind: 'message', text: 'plain words' })
       const messages = await t.read({ for: 'a' })
       expect(messages.find((m) => m.text === patch)?.diff).toBe(true)
       expect(messages.find((m) => m.text === 'plain words')?.diff).toBeUndefined()
@@ -201,8 +201,8 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       const party = await makeParty()
       const a = await party.connectAs('a')
       await a.join('a')
-      await a.send({ from: 'a', to: 'all', kind: 'close', text: 'party closed by a' })
-      const sendError = await expectRejection(a.send({ from: 'a', to: 'all', kind: 'message', text: 'too late' }))
+      await a.send({ from: 'a', to: '*', kind: 'close', text: 'party closed by a' })
+      const sendError = await expectRejection(a.send({ from: 'a', to: '*', kind: 'message', text: 'too late' }))
       expect(sendError.message).toContain('closed')
       const b = await party.connectAs('b')
       const joinError = await expectRejection(b.join('b'))
@@ -218,8 +218,8 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       await a.join('a')
       await b.join('b')
       await Promise.all([
-        ...Array.from({ length: 10 }, (_, i) => a.send({ from: 'a', to: 'all', kind: 'message', text: `a${i}` })),
-        ...Array.from({ length: 10 }, (_, i) => b.send({ from: 'b', to: 'all', kind: 'message', text: `b${i}` })),
+        ...Array.from({ length: 10 }, (_, i) => a.send({ from: 'a', to: '*', kind: 'message', text: `a${i}` })),
+        ...Array.from({ length: 10 }, (_, i) => b.send({ from: 'b', to: '*', kind: 'message', text: `b${i}` })),
       ])
       const messages = (await a.read({ for: 'a' })).filter((m) => m.kind === 'message')
       expect(messages).toHaveLength(20)

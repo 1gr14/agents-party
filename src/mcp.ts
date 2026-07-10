@@ -150,7 +150,7 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     async (args) => {
       try {
         return await withClient(args, undefined, async (client) => {
-          const to: Recipients = args.to === undefined || args.to.length === 0 ? 'all' : args.to
+          const to: Recipients = args.to === undefined || args.to.length === 0 ? '*' : args.to
           const sent = await client.send(args.text, { to, replyTo: args.replyTo, diff: args.diff })
           return text(JSON.stringify(sent))
         })

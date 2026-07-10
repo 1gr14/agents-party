@@ -44,7 +44,7 @@ rate limits, watch and reply from a browser) is coming soon; use --ntfy today.
 
 Exit codes: 0 ok · 1 error · 2 listen timeout`
 
-const formatTo = (to: Recipients): string => (to === 'all' ? 'all' : to.join(','))
+const formatTo = (to: Recipients): string => (to === '*' ? '*' : to.join(','))
 
 const formatMessage = (msg: Message, json: boolean): string => {
   if (json) return JSON.stringify(msg)
@@ -174,7 +174,7 @@ const run = async (argv: string[]): Promise<number> => {
         // A diff is sent verbatim — trimming could damage the patch.
         const text = values.diff ? raw : raw.trim()
         if (!text.trim()) throw new Error('nothing to send — pass text or pipe it via stdin')
-        const to: Recipients = values.to && values.to !== '*' ? values.to.split(',').map((s) => s.trim()) : 'all'
+        const to: Recipients = values.to && values.to !== '*' ? values.to.split(',').map((s) => s.trim()) : '*'
         const msg = await client.send(text, { to, replyTo: values['reply-to'], diff: values.diff })
         console.log(values.json ? JSON.stringify(msg) : `sent [${msg.cursor}] → ${formatTo(to)}`)
         return 0

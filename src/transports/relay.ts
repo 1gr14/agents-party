@@ -23,6 +23,7 @@ interface RelayError {
   message?: string
 }
 
+// The relay wire spells "everyone" as 'all'; the public model spells it '*' — translated at this boundary.
 interface WireMessage {
   cursor: string
   id: string
@@ -34,6 +35,9 @@ interface WireMessage {
   replyTo?: string
   diff?: boolean
 }
+
+const wireTo = (to: Message['to']): 'all' | string[] => (to === '*' ? 'all' : to)
+const modelTo = (to: WireMessage['to']): Message['to'] => (to === 'all' ? '*' : to)
 
 const TOKENS_FILE = 'relay-tokens.json'
 
@@ -144,7 +148,7 @@ export class RelayTransport implements Transport {
       id: wire.id,
       ts: wire.ts,
       from: wire.from,
-      to: wire.to,
+      to: modelTo(wire.to),
       kind: wire.kind,
       text: wire.text,
       ...(wire.replyTo === undefined ? {} : { replyTo: wire.replyTo }),
@@ -202,7 +206,7 @@ export class RelayTransport implements Transport {
         headers: this.participantHeaders(msg.from),
         fallback: 'relay close failed',
       })
-      return { cursor: '', id: '', ts: Date.now(), from: msg.from, to: 'all', kind: 'close', text: msg.text }
+      return { cursor: '', id: '', ts: Date.now(), from: msg.from, to: '*', kind: 'close', text: msg.text }
     }
     if (msg.kind !== 'message') {
       throw new Error('join/leave events are emitted by the relay itself.')
@@ -211,7 +215,7 @@ export class RelayTransport implements Transport {
     const wire = await this.request<WireMessage>('POST', '/messages', {
       headers: this.participantHeaders(msg.from),
       body: {
-        to: msg.to,
+        to: wireTo(msg.to),
         text,
         ...(msg.replyTo === undefined ? {} : { replyTo: msg.replyTo }),
         ...(msg.diff === true ? { diff: true } : {}),
@@ -224,7 +228,7 @@ export class RelayTransport implements Transport {
       id: wire.id,
       ts: wire.ts,
       from: wire.from,
-      to: wire.to,
+      to: modelTo(wire.to),
       kind: wire.kind,
       text: msg.text,
       ...(wire.replyTo === undefined ? {} : { replyTo: wire.replyTo }),

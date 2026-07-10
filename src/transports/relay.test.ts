@@ -50,7 +50,7 @@ if (RELAY_URL) {
       const party = await makeParty()
       const t = await party.connectAs('a')
       await t.join('a')
-      await t.send({ from: 'a', to: 'all', kind: 'message', text: 'secret plans' })
+      await t.send({ from: 'a', to: '*', kind: 'message', text: 'secret plans' })
 
       // Fetch the raw wire without decrypting: same endpoint, raw fetch.
       const tokens = JSON.parse(

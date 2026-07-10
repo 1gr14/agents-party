@@ -6,14 +6,15 @@ import { formatLocalRef, formatNtfyRef, parseRef } from './refs.js'
 describe('parseRef', () => {
   it('parses a local ref into an absolute path', () => {
     const parsed = parseRef('local:/tmp/party.sqlite')
-    expect(parsed).toEqual({ scheme: 'local', path: '/tmp/party.sqlite' })
+    // path.resolve keeps the expectation platform-correct (drive letters on Windows)
+    expect(parsed).toEqual({ scheme: 'local', path: path.resolve('/tmp/party.sqlite') })
   })
 
   it('resolves relative local paths', () => {
     const parsed = parseRef('local:parties/demo.sqlite')
     if (parsed.scheme !== 'local') throw new Error('expected local')
     expect(path.isAbsolute(parsed.path)).toBe(true)
-    expect(parsed.path.endsWith('/parties/demo.sqlite')).toBe(true)
+    expect(parsed.path).toBe(path.resolve('parties/demo.sqlite'))
   })
 
   it('expands ~ in local paths', () => {
@@ -55,7 +56,7 @@ describe('parseRef', () => {
 describe('format ↔ parse round-trips', () => {
   it('local', () => {
     const ref = formatLocalRef('/tmp/x.sqlite')
-    expect(parseRef(ref)).toEqual({ scheme: 'local', path: '/tmp/x.sqlite' })
+    expect(parseRef(ref)).toEqual({ scheme: 'local', path: path.resolve('/tmp/x.sqlite') })
   })
 
   it('ntfy (including trailing-slash servers)', () => {

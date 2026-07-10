@@ -124,6 +124,11 @@ jobs:
           name: build-files
           path: .
 
+      # The package has runtime deps (MCP SDK, zod) — the built dist needs them
+      # installed, exactly like a consumer's npm install would provide.
+      - name: Install production dependencies
+        run: npm install --omit=dev --ignore-scripts
+
       - name: Smoke test built package
         run: node scripts/smoke.mjs
 

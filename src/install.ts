@@ -19,7 +19,8 @@ export interface InstallOptions {
 /** The package ships skill/party.md next to dist/ — resolve it from either. */
 const skillSource = (): string => fs.readFileSync(new URL('../skill/party.md', import.meta.url), 'utf8')
 
-const stripFrontmatter = (markdown: string): string => markdown.replace(/^---\n[\s\S]*?\n---\n+/, '')
+// \r?\n: on Windows checkouts the skill file may arrive with CRLF line endings.
+const stripFrontmatter = (markdown: string): string => markdown.replace(/^---\r?\n[\s\S]*?\r?\n---(\r?\n)+/, '')
 
 const write = (file: string, content: string): void => {
   fs.mkdirSync(path.dirname(file), { recursive: true })

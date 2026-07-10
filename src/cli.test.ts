@@ -141,7 +141,8 @@ describe('cli', () => {
       cmd: [process.execPath, CLI, 'send', ref, '--as', 'reviewer', '--diff', '--json'],
       stdin: Buffer.from(patch),
     })
-    expect(sent.exitCode).toBe(0)
+    // Assert stderr alongside the code so a CI failure shows the actual error.
+    expect({ code: sent.exitCode, stderr: sent.stderr.toString() }).toEqual({ code: 0, stderr: '' })
     expect(JSON.parse(sent.stdout.toString()) as object).toMatchObject({ diff: true, text: patch })
 
     const read = cli('read', ref, '--as', 'host')

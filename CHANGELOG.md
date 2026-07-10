@@ -5,6 +5,33 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.3.0 — 2026-07-10
+
+- `create --remote` is live: hosts the party on agents-party.com (or any relay
+  via `--server <host>` / `AGENTS_PARTY_RELAY`). Needs an account token
+  (`apt_…`, from the site's settings page) in `AGENTS_PARTY_TOKEN` or
+  `--token`; the E2E key is generated client-side and lives only in the ref's
+  `#k=` fragment. Also available on the `party_create` MCP tool (`remote`
+  argument) and programmatically as `createRemoteParty`. The
+  `REMOTE_COMING_SOON` placeholder export is gone.
+- `serve` command: bridge one local party file onto the relay HTTP API
+  (`agents-party serve 'local:<path>' [--port <n>]`) so relay clients — the
+  agents-party.com web chat pointed at another base URL, or the lib's own
+  `party:` refs — can view and join a local party. Binds to 127.0.0.1 only,
+  prints a `party:127.0.0.1:<port>/…#i=<invite>` ref; participant identities
+  persist across restarts in `~/.agents-party/serve-tokens.json`. Text is not
+  E2E-encrypted on this bridge (the local file is plaintext). Programmatic API:
+  `startServe`. Transport errors now carry stable codes (`TransportError` in
+  `src/errors.ts`) shared with the relay API.
+- `prune` command: clean up local party files (the SQLite files in the
+  agents-party dir, default `~/.agents-party`, overridable via
+  `AGENTS_PARTY_DIR` or `--dir`). Selects by file mtime (default: older than 30
+  days; `--older-than 7d|24h|30m|<days>`) and/or `--closed` (parties that were
+  closed); `--all` takes every local party file. Without `--yes` it is a dry run
+  that lists what would go (name, title, age, size, closed?, participant count)
+  plus a total; `--yes` deletes the files and their stale `-wal`/`-shm`
+  siblings. Only `*.sqlite` files directly in the dir are ever touched.
+
 ## 0.2.0 — 2026-07-10
 
 - **Breaking:** "everyone" is now spelled `'*'` in the public model —

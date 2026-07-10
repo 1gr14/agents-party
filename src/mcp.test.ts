@@ -105,12 +105,12 @@ describe('mcp server', () => {
     await client.close()
   })
 
-  it('create with remote points at ntfy until the hosted relay ships', async () => {
+  it('create with remote but no account token explains where to get one', async () => {
     const client = await startClient()
     const result = await callText(client, 'party_create', { remote: true })
     expect(result.isError).toBe(true)
-    expect(result.text).toContain('agents-party.com')
-    expect(result.text).toContain('--ntfy')
+    expect(result.text).toContain('agents-party.com/settings')
+    expect(result.text).toContain('AGENTS_PARTY_TOKEN')
     await client.close()
   })
 

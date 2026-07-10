@@ -4,16 +4,19 @@
  * whitespace. `all` is the wire-level broadcast sentinel.
  */
 
+import { TransportError } from './errors.js'
+
 const NAME_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}._-]{0,31}$/u
 
 const RESERVED = new Set(['all'])
 
 export const validateParticipantName = (name: string): void => {
   if (RESERVED.has(name.toLowerCase())) {
-    throw new Error(`The name "${name}" is reserved — pick another one.`)
+    throw new TransportError('INVALID_NAME', `The name "${name}" is reserved — pick another one.`)
   }
   if (!NAME_PATTERN.test(name)) {
-    throw new Error(
+    throw new TransportError(
+      'INVALID_NAME',
       `Invalid participant name "${name}" — use 1-32 letters, digits, dots, dashes or underscores (no spaces, *, @ or commas).`,
     )
   }

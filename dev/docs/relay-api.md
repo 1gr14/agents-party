@@ -3,7 +3,14 @@
 `RelayTransport` (`src/transports/relay.ts`) is a client of this API. The
 reference implementation is the agents-party.com site (private repo); anything
 that implements this contract and passes the transport contract suite can host
-`party:` refs.
+`party:` refs. The lib itself ships a second implementation:
+`agents-party serve` (`src/serve.ts`) bridges one local party file onto this API
+on 127.0.0.1 — `src/serve.test.ts` runs the full contract suite against it
+through `RelayTransport`, so the client and the wire contract are tested as a
+pair without a site checkout. Error codes come from `src/errors.ts` (shared with
+the transports). One serve-only simplification, not reference behavior:
+`POST /invites` returns the single multi-use invite token minted at startup
+instead of a fresh one.
 
 ## Refs and secrets
 

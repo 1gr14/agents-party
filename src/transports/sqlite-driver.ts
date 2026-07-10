@@ -11,13 +11,23 @@ export interface SqliteDb {
   close(): void
 }
 
+/** A read-only handle: opens without writing (no schema/migrations/WAL), for inspecting a party file without touching
+it. */
+export interface SqliteReader {
+  all(sql: string, params?: SqlParam[]): Record<string, unknown>[]
+  close(): void
+}
+
 interface SqliteStatement {
   run(...params: SqlParam[]): { changes: number | bigint; lastInsertRowid: number | bigint }
   all(...params: SqlParam[]): Record<string, unknown>[]
 }
 
 interface NodeSqliteModule {
-  DatabaseSync: new (path: string) => {
+  DatabaseSync: new (
+    path: string,
+    options?: { readonly?: boolean },
+  ) => {
     exec(sql: string): void
     prepare(sql: string): SqliteStatement
     close(): void
@@ -27,7 +37,7 @@ interface NodeSqliteModule {
 interface BunSqliteModule {
   Database: new (
     path: string,
-    options?: { create?: boolean },
+    options?: { create?: boolean; readonly?: boolean },
   ) => {
     exec(sql: string): void
     query(sql: string): SqliteStatement
@@ -105,6 +115,31 @@ export const openSqlite = async (path: string): Promise<SqliteDb> => {
       const result = db.prepare(sql).run(...params)
       return { changes: Number(result.changes), lastInsertRowid: Number(result.lastInsertRowid) }
     },
+    all: (sql, params = []) => db.prepare(sql).all(...params),
+    close: () => db.close(),
+  }
+}
+
+export const openSqliteReadonly = async (path: string): Promise<SqliteReader> => {
+  if ((globalThis as { Bun?: unknown }).Bun !== undefined) {
+    const specifier = 'bun:sqlite'
+    const { Database } = (await import(specifier)) as BunSqliteModule
+    const db = new Database(path, { readonly: true })
+    return {
+      all: (sql, params = []) => db.query(sql).all(...params),
+      close: () => db.close(),
+    }
+  }
+
+  let mod: NodeSqliteModule
+  try {
+    const specifier = 'node:sqlite'
+    mod = (await import(specifier)) as NodeSqliteModule
+  } catch {
+    throw new Error('Inspecting a local party needs SQLite: run via Bun (`bunx agents-party`) or Node 22.5+.')
+  }
+  const db = new mod.DatabaseSync(path, { readonly: true })
+  return {
     all: (sql, params = []) => db.prepare(sql).all(...params),
     close: () => db.close(),
   }

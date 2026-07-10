@@ -20,7 +20,7 @@ export type ParsedRef =
 export const KNOWN_SCHEMES = ['local', 'ntfy', 'party'] as const
 
 /** Local-ish relay hosts speak plain http in dev; everything else is https. */
-const isLocalHost = (host: string): boolean =>
+export const isLocalHost = (host: string): boolean =>
   host === 'localhost' || host.startsWith('localhost:') || host.startsWith('127.') || host.startsWith('[::1]')
 
 const expandHome = (p: string): string => {

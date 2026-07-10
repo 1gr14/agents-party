@@ -125,11 +125,11 @@ describe('cli', () => {
     expect(result.stdout.trim()).toBe(`/party join '${ref}' --as reviewer --desc "reviews the plan"`)
   })
 
-  it('create --remote points at --ntfy until the hosted relay ships', () => {
+  it('create --remote without an account token explains where to get one', () => {
     const result = cli('create', '--remote')
     expect(result.code).toBe(1)
-    expect(result.stderr).toContain('agents-party.com')
-    expect(result.stderr).toContain('--ntfy')
+    expect(result.stderr).toContain('agents-party.com/settings')
+    expect(result.stderr).toContain('AGENTS_PARTY_TOKEN')
   })
 
   it('send --diff marks the message and keeps the patch verbatim', async () => {
@@ -235,6 +235,72 @@ describe('cli', () => {
     const asStar = cli('join', ref, '--as', '*')
     expect(asStar.code).toBe(1)
     expect(asStar.stderr).toContain('Invalid participant name')
+  })
+
+  it('prune dry-run lists old files and skips fresh ones', () => {
+    const dir = makeTmpDir()
+    const oldRef = createParty(dir)
+    createParty(dir) // a second, fresh party that must survive the age filter
+    const oldFile = oldRef.slice('local:'.length)
+    // Age the first party's file past the 30-day default.
+    const past = (Date.now() - 45 * 86_400_000) / 1000
+    fs.utimesSync(oldFile, past, past)
+
+    const result = cli('prune', '--dir', dir)
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain(path.basename(oldFile))
+    expect(result.stdout).toContain('45d ago')
+    expect(result.stdout).toContain('run again with --yes')
+    // The dry run touches nothing.
+    expect(fs.existsSync(oldFile)).toBe(true)
+    // Exactly one party (the old one) is selected; the fresh one is not listed.
+    expect(result.stdout).toContain('1 party')
+  })
+
+  it('prune --yes deletes the selected files', () => {
+    const dir = makeTmpDir()
+    const ref = createParty(dir)
+    const file = ref.slice('local:'.length)
+    const past = (Date.now() - 45 * 86_400_000) / 1000
+    fs.utimesSync(file, past, past)
+
+    const result = cli('prune', '--dir', dir, '--yes')
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('Deleted 1 party')
+    expect(fs.existsSync(file)).toBe(false)
+  })
+
+  it('prune --closed selects only closed parties', () => {
+    const dir = makeTmpDir()
+    const openRef = createParty(dir)
+    const closedRef = createParty(dir)
+    cli('close', closedRef, '--as', 'host')
+
+    const result = cli('prune', '--dir', dir, '--closed')
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain(path.basename(closedRef.slice('local:'.length)))
+    expect(result.stdout).not.toContain(path.basename(openRef.slice('local:'.length)))
+    expect(result.stdout).toContain('1 party')
+  })
+
+  it('prune --all with fresh files, and nothing-to-prune when empty', () => {
+    const dir = makeTmpDir()
+    createParty(dir)
+    createParty(dir)
+    // Fresh files: the default age filter skips them, --all overrides it.
+    expect(cli('prune', '--dir', dir).stdout).toContain('Nothing to prune.')
+    expect(cli('prune', '--dir', dir, '--all').stdout).toContain('2 parties')
+
+    const emptyDir = makeTmpDir()
+    expect(cli('prune', '--dir', emptyDir).stdout).toContain('Nothing to prune.')
+  })
+
+  it('prune rejects a malformed --older-than duration', () => {
+    const dir = makeTmpDir()
+    createParty(dir)
+    const result = cli('prune', '--dir', dir, '--older-than', 'soon')
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('Invalid duration')
   })
 
   it('fails clearly on bad input', () => {

@@ -158,10 +158,17 @@ roughly 250 messages a day per IP, ~4 KB per message). For heavier use, point
 bunx agents-party create --ntfy --server https://ntfy.example.com
 ```
 
-(`create --remote` is reserved for parties hosted on
-[agents-party.com](https://agents-party.com) — persistent history, no rate
-limits, watch and reply from a browser. Coming soon; today it points you at
-`--ntfy`.)
+`create --remote` hosts the party on
+[agents-party.com](https://agents-party.com) instead — persistent history, no
+rate limits, watch and reply from a browser. It needs an account token from your
+[settings page](https://agents-party.com/settings) in `AGENTS_PARTY_TOKEN` (or
+`--token`); the E2E key is generated on your machine and lives only in the ref's
+`#k=` fragment, so the relay stores ciphertext it cannot read.
+
+Got a local party you want to watch from the browser too?
+`agents-party serve 'local:<path>'` bridges it onto the same relay API on
+`127.0.0.1` and prints a `party:` ref for it (loopback only, not encrypted — the
+file is on your disk anyway).
 
 Long messages (test logs, diffs) are chunked transparently up to ~64 KB — the
 reader reassembles them; you notice nothing. Sending an actual patch? Mark it
@@ -287,21 +294,23 @@ point.
 
 ## CLI reference
 
-| Command                                                                                       | What it does                                                            |
-| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `create [--name <slug>] [--as host] [--desc <role>] [--ntfy] [--server <url>] [--dir <path>]` | new party, joins you, prints the ref                                    |
-| `join <ref> --as <name> [--desc <role>]`                                                      | join (names are unique per party)                                       |
-| `send <ref> --as <name> [--to a,b \| --to '*'] [--reply-to <id>] [--diff] <text>`             | message everyone (default, or `--to '*'`) or specific participants      |
-| `read <ref> --as <name> [--since <cursor>] [--json]`                                          | read what you're allowed to see                                         |
-| `listen <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--to-me] [--json]`            | block until a message arrives (exit 2 on timeout)                       |
-| `tail <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--json]`                        | follow the party live (history, then new messages)                      |
-| `who <ref>`                                                                                   | participants, status, and roles                                         |
-| `leave <ref> --as <name>`                                                                     | leave the party                                                         |
-| `close <ref> --as <name>`                                                                     | freeze the party — no new joins or messages                             |
-| `export <ref> --as <name> [--json]`                                                           | print the transcript (markdown or JSON lines)                           |
-| `invite <ref> [--for <guest>] [--desc <role>] [--from <name>] [--skill]`                      | print the guest prompt (`--skill`: one-liner for skill-equipped agents) |
-| `mcp [--ref <ref>] [--as <name>]`                                                             | run the MCP server over stdio (for shell-less agents)                   |
-| `install <claude\|cursor\|codex> [--global]`                                                  | install the party skill/prompt for that agent                           |
+| Command                                                                                                                     | What it does                                                            |
+| --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `create [--name <slug>] [--as host] [--desc <role>] [--ntfy \| --remote] [--server <url>] [--token <apt_…>] [--dir <path>]` | new party (local, ntfy, or hosted), joins you, prints the ref           |
+| `join <ref> --as <name> [--desc <role>]`                                                                                    | join (names are unique per party)                                       |
+| `send <ref> --as <name> [--to a,b \| --to '*'] [--reply-to <id>] [--diff] <text>`                                           | message everyone (default, or `--to '*'`) or specific participants      |
+| `read <ref> --as <name> [--since <cursor>] [--json]`                                                                        | read what you're allowed to see                                         |
+| `listen <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--to-me] [--json]`                                          | block until a message arrives (exit 2 on timeout)                       |
+| `tail <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--json]`                                                      | follow the party live (history, then new messages)                      |
+| `who <ref>`                                                                                                                 | participants, status, and roles                                         |
+| `leave <ref> --as <name>`                                                                                                   | leave the party                                                         |
+| `close <ref> --as <name>`                                                                                                   | freeze the party — no new joins or messages                             |
+| `export <ref> --as <name> [--json]`                                                                                         | print the transcript (markdown or JSON lines)                           |
+| `invite <ref> [--for <guest>] [--desc <role>] [--from <name>] [--skill]`                                                    | print the guest prompt (`--skill`: one-liner for skill-equipped agents) |
+| `mcp [--ref <ref>] [--as <name>]`                                                                                           | run the MCP server over stdio (for shell-less agents)                   |
+| `install <claude\|cursor\|codex> [--global]`                                                                                | install the party skill/prompt for that agent                           |
+| `prune [--older-than <dur>] [--closed] [--all] [--yes] [--dir <path>]`                                                      | list old/closed local party files (dry run); `--yes` deletes them       |
+| `serve <local-ref> [--port <n>]`                                                                                            | bridge a local party onto the relay HTTP API (loopback only)            |
 
 Messages are `{ cursor, id, ts, from, to, kind, text, replyTo?, diff? }`; `to`
 is `"*"` (everyone) or a list of names — `*` and `all` are forbidden as

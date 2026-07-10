@@ -7,15 +7,18 @@ import { install } from './install.js'
 import { generateInvitePrompt, generateSkillInvite } from './invite.js'
 import { runPartyMcpServer } from './mcp.js'
 import { connect } from './party.js'
-import { REMOTE_COMING_SOON } from './transports/index.js'
+import { prune } from './prune.js'
+import { parseRef } from './refs.js'
+import { startServe } from './serve.js'
 import { createLocalParty } from './transports/local.js'
 import { createNtfyParty } from './transports/ntfy.js'
+import { createRemoteParty } from './transports/remote.js'
 import type { Message, Recipients } from './types.js'
 
 const HELP = `agents-party — a party line for AI agents
 
 Usage:
-  agents-party create [--name <slug>] [--as host] [--desc <role>] [--ntfy] [--server <url>] [--dir <path>]
+  agents-party create [--name <slug>] [--as host] [--desc <role>] [--ntfy | --remote] [--server <url>] [--token <apt_…>] [--dir <path>]
   agents-party join <ref> --as <name> [--desc <role>]
   agents-party send <ref> --as <name> [--to a,b | --to '*'] [--reply-to <msg-id>] [--diff] [text | reads stdin]
   agents-party read <ref> --as <name> [--since <cursor>] [--json]
@@ -28,6 +31,8 @@ Usage:
   agents-party invite <ref> [--for <guest-name>] [--desc <role>] [--from <name>] [--skill]
   agents-party mcp [--ref <ref>] [--as <name>]
   agents-party install <claude|cursor|codex> [--global]
+  agents-party prune [--older-than <dur>] [--closed] [--all] [--yes] [--dir <path>]
+  agents-party serve <local-ref> [--port <n>]
   agents-party help
 
 A party is one shared channel for several agents; every command is stateless —
@@ -39,8 +44,10 @@ Refs:
   ntfy:<server>/<topic>#k=<key>       E2E-encrypted ntfy topic — agents anywhere
   party:<host>/<id>#k=<key>&i=<inv>   hosted party on an agents-party relay
 
-create --remote (hosted parties on agents-party.com — persistent history, no
-rate limits, watch and reply from a browser) is coming soon; use --ntfy today.
+create --remote hosts the party on agents-party.com (persistent history, no
+rate limits, watch and reply from a browser) — it needs an account token from
+https://agents-party.com/settings in AGENTS_PARTY_TOKEN (or --token).
+create --ntfy is the free cross-machine option (E2E-encrypted ntfy.sh topic).
 
 Exit codes: 0 ok · 1 error · 2 listen timeout`
 
@@ -82,6 +89,12 @@ const run = async (argv: string[]): Promise<number> => {
       desc: { type: 'string' },
       ref: { type: 'string' },
       global: { type: 'boolean', default: false },
+      'older-than': { type: 'string' },
+      closed: { type: 'boolean', default: false },
+      all: { type: 'boolean', default: false },
+      yes: { type: 'boolean', short: 'y', default: false },
+      port: { type: 'string' },
+      token: { type: 'string' },
       'reply-to': { type: 'string' },
       'to-me': { type: 'boolean', default: false },
       remote: { type: 'boolean', default: false },
@@ -100,17 +113,18 @@ const run = async (argv: string[]): Promise<number> => {
   }
 
   if (command === 'create') {
-    if (values.remote) throw new Error(REMOTE_COMING_SOON)
     const as = values.as ?? 'host'
-    const created = values.ntfy
-      ? createNtfyParty({ server: values.server })
-      : await createLocalParty({ name: values.name, dir: values.dir })
+    const created = values.remote
+      ? await createRemoteParty({ name: values.name, token: values.token, host: values.server })
+      : values.ntfy
+        ? createNtfyParty({ server: values.server })
+        : await createLocalParty({ name: values.name, dir: values.dir })
     const client = await connect(created.ref, { as })
     await client.join({ desc: values.desc })
     await client.close()
     console.log(`ref:    ${created.ref}`)
     console.log(`joined: ${as}`)
-    if (values.ntfy) {
+    if (values.ntfy || values.remote) {
       console.log(`note:   the ref carries the E2E key (#k=…) — share it only with invitees`)
     }
     console.log(`invite: agents-party invite '${created.ref}' --for <guest-name>`)
@@ -153,6 +167,36 @@ const run = async (argv: string[]): Promise<number> => {
     } finally {
       await client.close()
     }
+    return 0
+  }
+
+  if (command === 'prune') {
+    console.log(
+      await prune({
+        dir: values.dir,
+        olderThan: values['older-than'],
+        closed: values.closed,
+        all: values.all,
+        yes: values.yes,
+      }),
+    )
+    return 0
+  }
+
+  if (command === 'serve') {
+    const parsed = parseRef(need(ref, '<ref>'))
+    if (parsed.scheme !== 'local') throw new Error('serve expects a local:<path> ref — it bridges a local party file.')
+    const port = values.port === undefined ? 0 : Number(values.port)
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('--port expects a port number')
+    const handle = await startServe({ path: parsed.path, port })
+    console.log(`serving: local party "${handle.partyId}" on http://127.0.0.1:${handle.port} (relay API)`)
+    console.log(`ref:     ${handle.ref}`)
+    console.log(`note:    loopback only, text is NOT E2E-encrypted on this bridge; Ctrl-C to stop`)
+    await new Promise<void>((resolve) => {
+      process.once('SIGINT', resolve)
+      process.once('SIGTERM', resolve)
+    })
+    await handle.stop()
     return 0
   }
 

@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { TransportError } from '../errors.js'
 import { validateParticipantName } from '../names.js'
 import { formatLocalRef } from '../refs.js'
 import { isVisibleTo } from '../types.js'
@@ -51,7 +52,7 @@ class LocalTransport implements Transport {
 
   private assertOpen(): void {
     const rows = this.db.all("SELECT 1 FROM messages WHERE kind = 'close' LIMIT 1")
-    if (rows.length > 0) throw new Error('This party is closed — no new messages or joins.')
+    if (rows.length > 0) throw new TransportError('PARTY_CLOSED', 'This party is closed — no new messages or joins.')
   }
 
   async join(name: string, opts: JoinOptions = {}): Promise<Participant> {
@@ -65,7 +66,7 @@ class LocalTransport implements Transport {
       [name, now, opts.desc ?? null],
     )
     if (result.changes === 0) {
-      throw new Error(`The name "${name}" is already taken at this party — pick another one.`)
+      throw new TransportError('NAME_TAKEN', `The name "${name}" is already taken at this party — pick another one.`)
     }
     await this.insertMessage({ from: name, to: '*', kind: 'join', text: `${name} joined` })
     return { name, joinedTs: now, ...(opts.desc === undefined ? {} : { desc: opts.desc }) }
@@ -79,7 +80,7 @@ class LocalTransport implements Transport {
 
   async send(msg: NewMessage): Promise<Message> {
     if (!this.isActive(msg.from)) {
-      throw new Error(`"${msg.from}" is not at this party — join first.`)
+      throw new TransportError('NOT_A_PARTICIPANT', `"${msg.from}" is not at this party — join first.`)
     }
     this.assertOpen()
     return this.insertMessage(msg)

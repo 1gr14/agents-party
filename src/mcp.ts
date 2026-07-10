@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { generateInvitePrompt } from './invite.js'
 import { connect } from './party.js'
-import { REMOTE_COMING_SOON } from './transports/index.js'
+import { createRemoteParty } from './transports/remote.js'
 import { createLocalParty } from './transports/local.js'
 import { createNtfyParty } from './transports/ntfy.js'
 import type { PartyClient } from './party.js'
@@ -86,17 +86,21 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
         remote: z
           .boolean()
           .optional()
-          .describe('Hosted parties on agents-party.com — coming soon; use ntfy for cross-machine today'),
-        server: z.string().optional().describe('ntfy server (default https://ntfy.sh)'),
+          .describe(
+            'Host the party on agents-party.com (persistent history, browser access) — needs an account token in AGENTS_PARTY_TOKEN',
+          ),
+        server: z.string().optional().describe('ntfy server (default https://ntfy.sh), or relay host for remote'),
         dir: z.string().optional().describe('Directory for the local party file'),
       },
     },
     async (args) => {
       try {
-        if (args.remote === true) throw new Error(REMOTE_COMING_SOON)
-        const created = args.ntfy
-          ? createNtfyParty({ server: args.server })
-          : await createLocalParty({ name: args.name, dir: args.dir })
+        const created =
+          args.remote === true
+            ? await createRemoteParty({ name: args.name, host: args.server })
+            : args.ntfy
+              ? createNtfyParty({ server: args.server })
+              : await createLocalParty({ name: args.name, dir: args.dir })
         const as = args.as ?? defaults.as ?? 'host'
         const client = await connect(created.ref, { as })
         try {

@@ -132,18 +132,29 @@ describe('cli', () => {
     expect(result.stderr).toContain('--ntfy')
   })
 
-  it('send --diff marks the message and keeps the patch verbatim', () => {
+  it('send --diff marks the message and keeps the patch verbatim', async () => {
     const dir = makeTmpDir()
     const ref = createParty(dir)
     cli('join', ref, '--as', 'reviewer')
     const patch = '--- a/f.ts\n+++ b/f.ts\n@@ -1 +1 @@\n-old\n+new\n'
-    const sent = Bun.spawnSync({
+    // stdin is a real pipe, like `git diff | agents-party send --diff` —
+    // Bun.spawnSync({stdin: Buffer}) delivers an empty stream on Linux.
+    const proc = Bun.spawn({
       cmd: [process.execPath, CLI, 'send', ref, '--as', 'reviewer', '--diff', '--json'],
-      stdin: Buffer.from(patch),
+      stdin: 'pipe',
+      stdout: 'pipe',
+      stderr: 'pipe',
     })
+    proc.stdin.write(patch)
+    await proc.stdin.end()
+    const [code, stdout, stderr] = await Promise.all([
+      proc.exited,
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ])
     // Assert stderr alongside the code so a CI failure shows the actual error.
-    expect({ code: sent.exitCode, stderr: sent.stderr.toString() }).toEqual({ code: 0, stderr: '' })
-    expect(JSON.parse(sent.stdout.toString()) as object).toMatchObject({ diff: true, text: patch })
+    expect({ code, stderr }).toEqual({ code: 0, stderr: '' })
+    expect(JSON.parse(stdout) as object).toMatchObject({ diff: true, text: patch })
 
     const read = cli('read', ref, '--as', 'host')
     expect(read.stdout).toContain('[diff]')

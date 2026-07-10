@@ -153,7 +153,9 @@ jobs:
           scope: '@1gr14'
 
       - name: Upgrade npm (OIDC Trusted Publisher needs npm >= 11.5.1)
-        run: npm install -g npm@latest
+        # Pinned to the 11.x line: npm 12.0.0 (current `latest`) ships a broken
+        # provenance publish — "Cannot find module 'sigstore'" in libnpmpublish.
+        run: npm install -g npm@11
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

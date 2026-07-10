@@ -51,9 +51,23 @@ CREATE TABLE IF NOT EXISTS messages (
   recipients TEXT NOT NULL,
   kind TEXT NOT NULL,
   text TEXT NOT NULL,
-  reply_to TEXT
+  reply_to TEXT,
+  diff INTEGER NOT NULL DEFAULT 0
 );
 `
+
+/** Idempotent column additions for party files created by older versions. */
+const MIGRATIONS = ['ALTER TABLE messages ADD COLUMN diff INTEGER NOT NULL DEFAULT 0']
+
+const applyMigrations = (exec: (sql: string) => void): void => {
+  for (const migration of MIGRATIONS) {
+    try {
+      exec(migration)
+    } catch {
+      // column already exists (fresh schema or already migrated)
+    }
+  }
+}
 
 export const openSqlite = async (path: string): Promise<SqliteDb> => {
   // Computed specifiers keep tsc (types: ["node"] in the build project) from
@@ -64,6 +78,7 @@ export const openSqlite = async (path: string): Promise<SqliteDb> => {
     const db = new Database(path, { create: true })
     db.exec('PRAGMA journal_mode = WAL')
     db.exec(SCHEMA)
+    applyMigrations((sql) => db.exec(sql))
     return {
       run: (sql, params = []) => {
         const result = db.query(sql).run(...params)
@@ -84,6 +99,7 @@ export const openSqlite = async (path: string): Promise<SqliteDb> => {
   const db = new mod.DatabaseSync(path)
   db.exec('PRAGMA journal_mode = WAL')
   db.exec(SCHEMA)
+  applyMigrations((sql) => db.exec(sql))
   return {
     run: (sql, params = []) => {
       const result = db.prepare(sql).run(...params)

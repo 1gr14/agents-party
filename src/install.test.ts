@@ -30,7 +30,7 @@ describe('install', () => {
     expect(file).toBe(path.join(dir, '.cursor', 'commands', 'party.md'))
     const content = fs.readFileSync(file ?? '', 'utf8')
     expect(content.startsWith('---')).toBe(false)
-    expect(content).toContain('host an agents-party')
+    expect(content).toContain('host or join an agents-party')
   })
 
   it('codex: returns a snippet instead of writing files', () => {
@@ -38,6 +38,6 @@ describe('install', () => {
     const { file, snippet } = install(dir, 'codex')
     expect(file).toBeUndefined()
     expect(snippet).toContain('AGENTS.md')
-    expect(snippet).toContain('host an agents-party')
+    expect(snippet).toContain('host or join an agents-party')
   })
 })

@@ -4,9 +4,10 @@ import process from 'node:process'
 import { text as readStream } from 'node:stream/consumers'
 import { parseArgs } from 'node:util'
 import { install } from './install.js'
-import { generateInvitePrompt } from './invite.js'
+import { generateInvitePrompt, generateSkillInvite } from './invite.js'
 import { runPartyMcpServer } from './mcp.js'
 import { connect } from './party.js'
+import { REMOTE_COMING_SOON } from './transports/index.js'
 import { createLocalParty } from './transports/local.js'
 import { createNtfyParty } from './transports/ntfy.js'
 import type { Message, Recipients } from './types.js'
@@ -14,9 +15,9 @@ import type { Message, Recipients } from './types.js'
 const HELP = `agents-party — a party line for AI agents
 
 Usage:
-  agents-party create [--name <slug>] [--as host] [--desc <role>] [--remote] [--server <url>] [--dir <path>]
+  agents-party create [--name <slug>] [--as host] [--desc <role>] [--ntfy] [--server <url>] [--dir <path>]
   agents-party join <ref> --as <name> [--desc <role>]
-  agents-party send <ref> --as <name> [--to a,b | --to '*'] [--reply-to <msg-id>] [text | reads stdin]
+  agents-party send <ref> --as <name> [--to a,b | --to '*'] [--reply-to <msg-id>] [--diff] [text | reads stdin]
   agents-party read <ref> --as <name> [--since <cursor>] [--json]
   agents-party listen <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--to-me] [--json]
   agents-party tail <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--json]
@@ -24,7 +25,7 @@ Usage:
   agents-party leave <ref> --as <name>
   agents-party close <ref> --as <name>
   agents-party export <ref> --as <name> [--json]
-  agents-party invite <ref> [--for <guest-name>] [--desc <role>] [--from <name>]
+  agents-party invite <ref> [--for <guest-name>] [--desc <role>] [--from <name>] [--skill]
   agents-party mcp [--ref <ref>] [--as <name>]
   agents-party install <claude|cursor|codex> [--global]
   agents-party help
@@ -37,6 +38,9 @@ Refs:
   local:<path>                    SQLite file — agents on this machine
   ntfy:<server>/<topic>#k=<key>   E2E-encrypted ntfy topic — agents anywhere
 
+create --remote (hosted parties on agents-party.com — persistent history, no
+rate limits, watch and reply from a browser) is coming soon; use --ntfy today.
+
 Exit codes: 0 ok · 1 error · 2 listen timeout`
 
 const formatTo = (to: Recipients): string => (to === 'all' ? 'all' : to.join(','))
@@ -44,7 +48,8 @@ const formatTo = (to: Recipients): string => (to === 'all' ? 'all' : to.join(','
 const formatMessage = (msg: Message, json: boolean): string => {
   if (json) return JSON.stringify(msg)
   if (msg.kind !== 'message') return `[${msg.cursor}] * ${msg.text}`
-  return `[${msg.cursor}] ${msg.from} → ${formatTo(msg.to)}: ${msg.text}`
+  const diffMark = msg.diff === true ? ' [diff]' : ''
+  return `[${msg.cursor}] ${msg.from} → ${formatTo(msg.to)}${diffMark}: ${msg.text}`
 }
 
 const need = (value: string | undefined, flag: string): string => {
@@ -79,6 +84,9 @@ const run = async (argv: string[]): Promise<number> => {
       'reply-to': { type: 'string' },
       'to-me': { type: 'boolean', default: false },
       remote: { type: 'boolean', default: false },
+      ntfy: { type: 'boolean', default: false },
+      diff: { type: 'boolean', default: false },
+      skill: { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
@@ -91,8 +99,9 @@ const run = async (argv: string[]): Promise<number> => {
   }
 
   if (command === 'create') {
+    if (values.remote) throw new Error(REMOTE_COMING_SOON)
     const as = values.as ?? 'host'
-    const created = values.remote
+    const created = values.ntfy
       ? createNtfyParty({ server: values.server })
       : await createLocalParty({ name: values.name, dir: values.dir })
     const client = await connect(created.ref, { as })
@@ -100,7 +109,7 @@ const run = async (argv: string[]): Promise<number> => {
     await client.close()
     console.log(`ref:    ${created.ref}`)
     console.log(`joined: ${as}`)
-    if (values.remote) {
+    if (values.ntfy) {
       console.log(`note:   the ref carries the E2E key (#k=…) — share it only with invitees`)
     }
     console.log(`invite: agents-party invite '${created.ref}' --for <guest-name>`)
@@ -127,14 +136,8 @@ const run = async (argv: string[]): Promise<number> => {
   }
 
   if (command === 'invite') {
-    console.log(
-      generateInvitePrompt({
-        ref: need(ref, '<ref>'),
-        guestName: values.for,
-        desc: values.desc,
-        from: values.from,
-      }),
-    )
+    const invite = { ref: need(ref, '<ref>'), guestName: values.for, desc: values.desc, from: values.from }
+    console.log(values.skill ? generateSkillInvite(invite) : generateInvitePrompt(invite))
     return 0
   }
 
@@ -166,10 +169,12 @@ const run = async (argv: string[]): Promise<number> => {
         return 0
       }
       case 'send': {
-        const text = rest.length > 0 ? rest.join(' ') : (await readStream(process.stdin)).trim()
-        if (!text) throw new Error('nothing to send — pass text or pipe it via stdin')
+        const raw = rest.length > 0 ? rest.join(' ') : await readStream(process.stdin)
+        // A diff is sent verbatim — trimming could damage the patch.
+        const text = values.diff ? raw : raw.trim()
+        if (!text.trim()) throw new Error('nothing to send — pass text or pipe it via stdin')
         const to: Recipients = values.to && values.to !== '*' ? values.to.split(',').map((s) => s.trim()) : 'all'
-        const msg = await client.send(text, { to, replyTo: values['reply-to'] })
+        const msg = await client.send(text, { to, replyTo: values['reply-to'], diff: values.diff })
         console.log(values.json ? JSON.stringify(msg) : `sent [${msg.cursor}] → ${formatTo(to)}`)
         return 0
       }
@@ -232,7 +237,15 @@ const run = async (argv: string[]): Promise<number> => {
             console.log(`- _${time} — ${msg.text}_`)
           } else {
             const reply = msg.replyTo === undefined ? '' : ` (reply to ${msg.replyTo})`
-            console.log(`- **${msg.from} → ${formatTo(msg.to)}**${reply} (${time}): ${msg.text}`)
+            if (msg.diff === true) {
+              console.log(`- **${msg.from} → ${formatTo(msg.to)}**${reply} (${time}) sent a diff:`)
+              console.log('')
+              console.log('```diff')
+              console.log(msg.text)
+              console.log('```')
+            } else {
+              console.log(`- **${msg.from} → ${formatTo(msg.to)}**${reply} (${time}): ${msg.text}`)
+            }
           }
         }
         return 0

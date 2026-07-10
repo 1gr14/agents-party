@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { generateInvitePrompt } from './invite.js'
 import { connect } from './party.js'
+import { REMOTE_COMING_SOON } from './transports/index.js'
 import { createLocalParty } from './transports/local.js'
 import { createNtfyParty } from './transports/ntfy.js'
 import type { PartyClient } from './party.js'
@@ -78,17 +79,22 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
         name: z.string().optional().describe('Short slug for the party name'),
         as: z.string().optional().describe('Your participant name (default: host)'),
         desc: z.string().optional().describe('Your role in the party, e.g. "runs the party"'),
-        remote: z
+        ntfy: z
           .boolean()
           .optional()
           .describe('Put the party on an E2E-encrypted ntfy topic (cross-machine) instead of a local file'),
-        server: z.string().optional().describe('ntfy server for --remote (default https://ntfy.sh)'),
+        remote: z
+          .boolean()
+          .optional()
+          .describe('Hosted parties on agents-party.com — coming soon; use ntfy for cross-machine today'),
+        server: z.string().optional().describe('ntfy server (default https://ntfy.sh)'),
         dir: z.string().optional().describe('Directory for the local party file'),
       },
     },
     async (args) => {
       try {
-        const created = args.remote
+        if (args.remote === true) throw new Error(REMOTE_COMING_SOON)
+        const created = args.ntfy
           ? createNtfyParty({ server: args.server })
           : await createLocalParty({ name: args.name, dir: args.dir })
         const as = args.as ?? defaults.as ?? 'host'
@@ -138,13 +144,14 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
         text: z.string().describe('The message text'),
         to: z.array(z.string()).optional().describe('Deliver only to these participant names (omit for everyone)'),
         replyTo: z.string().optional().describe('Id of the message this replies to'),
+        diff: z.boolean().optional().describe('The text is a unified diff — clients render it as one'),
       },
     },
     async (args) => {
       try {
         return await withClient(args, undefined, async (client) => {
           const to: Recipients = args.to === undefined || args.to.length === 0 ? 'all' : args.to
-          const sent = await client.send(args.text, { to, replyTo: args.replyTo })
+          const sent = await client.send(args.text, { to, replyTo: args.replyTo, diff: args.diff })
           return text(JSON.stringify(sent))
         })
       } catch (error) {

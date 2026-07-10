@@ -24,6 +24,8 @@ export interface Message {
   text: string
   /** Id of the message this one replies to. */
   replyTo?: string
+  /** The text is a unified diff — clients may render it as one (`send --diff`). */
+  diff?: boolean
 }
 
 export interface NewMessage {
@@ -32,6 +34,7 @@ export interface NewMessage {
   kind: MessageKind
   text: string
   replyTo?: string
+  diff?: boolean
 }
 
 export interface Participant {

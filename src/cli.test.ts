@@ -117,6 +117,40 @@ describe('cli', () => {
     expect(result.stdout).toContain('<your-name>')
   })
 
+  it('invite --skill prints the one-line /party command', () => {
+    const dir = makeTmpDir()
+    const ref = createParty(dir)
+    const result = cli('invite', ref, '--for', 'reviewer', '--desc', 'reviews the plan', '--skill')
+    expect(result.code).toBe(0)
+    expect(result.stdout.trim()).toBe(`/party join '${ref}' --as reviewer --desc "reviews the plan"`)
+  })
+
+  it('create --remote points at --ntfy until the hosted relay ships', () => {
+    const result = cli('create', '--remote')
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('agents-party.com')
+    expect(result.stderr).toContain('--ntfy')
+  })
+
+  it('send --diff marks the message and keeps the patch verbatim', () => {
+    const dir = makeTmpDir()
+    const ref = createParty(dir)
+    cli('join', ref, '--as', 'reviewer')
+    const patch = '--- a/f.ts\n+++ b/f.ts\n@@ -1 +1 @@\n-old\n+new\n'
+    const sent = Bun.spawnSync({
+      cmd: [process.execPath, CLI, 'send', ref, '--as', 'reviewer', '--diff', '--json'],
+      stdin: Buffer.from(patch),
+    })
+    expect(sent.exitCode).toBe(0)
+    expect(JSON.parse(sent.stdout.toString()) as object).toMatchObject({ diff: true, text: patch })
+
+    const read = cli('read', ref, '--as', 'host')
+    expect(read.stdout).toContain('[diff]')
+    const exported = cli('export', ref, '--as', 'host')
+    expect(exported.stdout).toContain('sent a diff:')
+    expect(exported.stdout).toContain('```diff')
+  })
+
   it('desc shows up in who; reply-to lands in the message', () => {
     const dir = makeTmpDir()
     const ref = createParty(dir)

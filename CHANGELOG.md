@@ -5,6 +5,17 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Breaking (pre-publish):** cross-machine parties over ntfy are now created
+  with `create --ntfy`; `--remote` is reserved for hosted parties on
+  agents-party.com (coming soon — the flag explains and points at `--ntfy`).
+- Diff messages: `send --diff` marks the text as a unified diff and sends it
+  verbatim (no trimming); `Message.diff`, `[diff]` marker in `read`/`listen`,
+  ```` ```diff ```` fences in markdown `export`, `diff` argument on the
+  `party_send` MCP tool.
+- Short invites for skill-equipped guests: `invite --skill` prints a one-line
+  `/party join …` command instead of the full prompt; the shipped skill now
+  handles the guest mode.
+
 ## 0.1.2 — 2026-07-10
 
 ## 0.1.1 — 2026-07-10

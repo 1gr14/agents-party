@@ -1,5 +1,5 @@
 export { decryptText, encryptText, generateKey } from './crypto.js'
-export { generateInvitePrompt } from './invite.js'
+export { generateInvitePrompt, generateSkillInvite } from './invite.js'
 export type { InviteOptions } from './invite.js'
 export { install } from './install.js'
 export type { InstallOptions, InstallTarget } from './install.js'

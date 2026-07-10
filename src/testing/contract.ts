@@ -184,6 +184,19 @@ export const describeTransportContract = (label: string, makeParty: () => Promis
       await t.close()
     })
 
+    it('carries the diff flag through send and read', async () => {
+      const party = await makeParty()
+      const t = await party.connectAs('a')
+      await t.join('a')
+      const patch = '--- a/f.ts\n+++ b/f.ts\n@@ -1 +1 @@\n-old\n+new\n'
+      await t.send({ from: 'a', to: 'all', kind: 'message', text: patch, diff: true })
+      await t.send({ from: 'a', to: 'all', kind: 'message', text: 'plain words' })
+      const messages = await t.read({ for: 'a' })
+      expect(messages.find((m) => m.text === patch)?.diff).toBe(true)
+      expect(messages.find((m) => m.text === 'plain words')?.diff).toBeUndefined()
+      await t.close()
+    })
+
     it('a close event freezes the party: no new sends or joins', async () => {
       const party = await makeParty()
       const a = await party.connectAs('a')

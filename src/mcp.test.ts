@@ -105,6 +105,25 @@ describe('mcp server', () => {
     await client.close()
   })
 
+  it('create with remote points at ntfy until the hosted relay ships', async () => {
+    const client = await startClient()
+    const result = await callText(client, 'party_create', { remote: true })
+    expect(result.isError).toBe(true)
+    expect(result.text).toContain('agents-party.com')
+    expect(result.text).toContain('--ntfy')
+    await client.close()
+  })
+
+  it('send carries the diff flag through to the message', async () => {
+    const client = await startClient()
+    const created = await callText(client, 'party_create', { dir: makeTmpDir() })
+    const ref = /ref: (\S+)/.exec(created.text)?.[1]
+    const sent = await callText(client, 'party_send', { ref, as: 'host', text: '+new line', diff: true })
+    expect(sent.isError).toBe(false)
+    expect(JSON.parse(sent.text)).toMatchObject({ diff: true })
+    await client.close()
+  })
+
   it('invite tool returns the self-contained prompt', async () => {
     const client = await startClient()
     const created = await callText(client, 'party_create', { dir: makeTmpDir() })

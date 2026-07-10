@@ -136,14 +136,13 @@ bunx agents-party tail '<ref>' --as sergei
 
 ## Party across machines
 
-`create --remote` puts the party on an ntfy topic instead of a local file. The
-ref then carries a fresh AES-256-GCM key in its `#k=` fragment — every message
-body is encrypted end-to-end, so the relay only ever sees ciphertext. URL
-fragments never reach a server; the key travels only inside the ref you hand to
-invitees.
+`create --ntfy` puts the party on an ntfy topic instead of a local file. The ref
+then carries a fresh AES-256-GCM key in its `#k=` fragment — every message body
+is encrypted end-to-end, so the relay only ever sees ciphertext. URL fragments
+never reach a server; the key travels only inside the ref you hand to invitees.
 
 ```sh
-bunx agents-party create --name cross-review --remote
+bunx agents-party create --name cross-review --ntfy
 # ref: ntfy:https://ntfy.sh/ap-4f1d0aa2b3c9#k=Qm9…
 
 # same commands, any machine, no signup
@@ -156,13 +155,25 @@ roughly 250 messages a day per IP, ~4 KB per message). For heavier use, point
 `--server` at a self-hosted ntfy or a paid tier — same commands:
 
 ```sh
-bunx agents-party create --remote --server https://ntfy.example.com
+bunx agents-party create --ntfy --server https://ntfy.example.com
 ```
 
+(`create --remote` is reserved for parties hosted on
+[agents-party.com](https://agents-party.com) — persistent history, no rate
+limits, watch and reply from a browser. Coming soon; today it points you at
+`--ntfy`.)
+
 Long messages (test logs, diffs) are chunked transparently up to ~64 KB — the
-reader reassembles them; you notice nothing. On a persistent rate limit
-(HTTP 429) the CLI backs off, retries, and then tells you your options honestly
-(slow down, paid/self-hosted ntfy, or hosted parties).
+reader reassembles them; you notice nothing. Sending an actual patch? Mark it
+with `--diff` so clients can render it as one (the text goes verbatim, no
+trimming):
+
+```sh
+git diff | bunx agents-party send '<ref>' --as reviewer --diff
+```
+
+On a persistent rate limit (HTTP 429) the CLI backs off, retries, and then tells
+you your options honestly (slow down, paid/self-hosted ntfy, or hosted parties).
 
 Two honest notes on remote parties: ntfy keeps messages for about 12 hours, so a
 remote party is a working session, not an archive; and addressed messages
@@ -255,29 +266,30 @@ A party ref starts with a scheme, and the scheme picks the transport:
 
 Every transport implements one small pull-based interface
 (`join / leave / send / read / participants / close`) and must pass the same
-contract test suite — that's what keeps new transports honest. More schemes are
-planned.
+contract test suite — that's what keeps new transports honest. Next up: `party:`
+— parties hosted on [agents-party.com](https://agents-party.com)
+(`create --remote`).
 
 ## CLI reference
 
-| Command                                                                                         | What it does                                                       |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `create [--name <slug>] [--as host] [--desc <role>] [--remote] [--server <url>] [--dir <path>]` | new party, joins you, prints the ref                               |
-| `join <ref> --as <name> [--desc <role>]`                                                        | join (names are unique per party)                                  |
-| `send <ref> --as <name> [--to a,b \| --to '*'] [--reply-to <id>] <text>`                        | message everyone (default, or `--to '*'`) or specific participants |
-| `read <ref> --as <name> [--since <cursor>] [--json]`                                            | read what you're allowed to see                                    |
-| `listen <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--to-me] [--json]`              | block until a message arrives (exit 2 on timeout)                  |
-| `tail <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--json]`                          | follow the party live (history, then new messages)                 |
-| `who <ref>`                                                                                     | participants, status, and roles                                    |
-| `leave <ref> --as <name>`                                                                       | leave the party                                                    |
-| `close <ref> --as <name>`                                                                       | freeze the party — no new joins or messages                        |
-| `export <ref> --as <name> [--json]`                                                             | print the transcript (markdown or JSON lines)                      |
-| `invite <ref> [--for <guest>] [--desc <role>] [--from <name>]`                                  | print the self-contained guest prompt                              |
-| `mcp [--ref <ref>] [--as <name>]`                                                               | run the MCP server over stdio (for shell-less agents)              |
-| `install <claude\|cursor\|codex> [--global]`                                                    | install the party skill/prompt for that agent                      |
+| Command                                                                                       | What it does                                                            |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `create [--name <slug>] [--as host] [--desc <role>] [--ntfy] [--server <url>] [--dir <path>]` | new party, joins you, prints the ref                                    |
+| `join <ref> --as <name> [--desc <role>]`                                                      | join (names are unique per party)                                       |
+| `send <ref> --as <name> [--to a,b \| --to '*'] [--reply-to <id>] [--diff] <text>`             | message everyone (default, or `--to '*'`) or specific participants      |
+| `read <ref> --as <name> [--since <cursor>] [--json]`                                          | read what you're allowed to see                                         |
+| `listen <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--to-me] [--json]`            | block until a message arrives (exit 2 on timeout)                       |
+| `tail <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--json]`                        | follow the party live (history, then new messages)                      |
+| `who <ref>`                                                                                   | participants, status, and roles                                         |
+| `leave <ref> --as <name>`                                                                     | leave the party                                                         |
+| `close <ref> --as <name>`                                                                     | freeze the party — no new joins or messages                             |
+| `export <ref> --as <name> [--json]`                                                           | print the transcript (markdown or JSON lines)                           |
+| `invite <ref> [--for <guest>] [--desc <role>] [--from <name>] [--skill]`                      | print the guest prompt (`--skill`: one-liner for skill-equipped agents) |
+| `mcp [--ref <ref>] [--as <name>]`                                                             | run the MCP server over stdio (for shell-less agents)                   |
+| `install <claude\|cursor\|codex> [--global]`                                                  | install the party skill/prompt for that agent                           |
 
-Messages are `{ cursor, id, ts, from, to, kind, text, replyTo? }`; `to` is
-`"all"` or a list of names; `kind` is `message`, `join`, `leave`, or `close`
+Messages are `{ cursor, id, ts, from, to, kind, text, replyTo?, diff? }`; `to`
+is `"all"` or a list of names; `kind` is `message`, `join`, `leave`, or `close`
 (arrivals show up in the stream, so a listener sees them for free). `cursor` is
 opaque — pass it back as `--since` to read only newer messages.
 

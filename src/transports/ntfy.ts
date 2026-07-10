@@ -57,6 +57,8 @@ interface Envelope {
   kind: MessageKind
   text: string
   replyTo?: string
+  /** The text is a unified diff. */
+  diff?: boolean
   /** Participant description — carried by join envelopes. */
   desc?: string
   /** Present on chunks of a long message: chunk index / total count. */
@@ -86,6 +88,7 @@ const envelopeToItem = (envelope: Envelope, text = envelope.text): StreamItem =>
   kind: envelope.kind,
   text,
   ...(envelope.replyTo === undefined ? {} : { replyTo: envelope.replyTo }),
+  ...(envelope.diff === true ? { diff: true } : {}),
   ...(envelope.desc === undefined ? {} : { desc: envelope.desc }),
 })
 

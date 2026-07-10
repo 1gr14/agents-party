@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { generateInvitePrompt } from './invite.js'
+import { generateInvitePrompt, generateSkillInvite } from './invite.js'
 
 const NTFY_REF = 'ntfy:https://ntfy.sh/ap-abc123#k=SECRET'
 const LOCAL_REF = 'local:/tmp/party-x.sqlite'
@@ -41,5 +41,17 @@ describe('generateInvitePrompt', () => {
 
   it('rejects invalid refs early', () => {
     expect(() => generateInvitePrompt({ ref: 'nope', guestName: 'g' })).toThrow('Unknown party ref')
+  })
+})
+
+describe('generateSkillInvite', () => {
+  it('is one pasteable /party line with the quoted ref', () => {
+    const line = generateSkillInvite({ ref: LOCAL_REF, guestName: 'reviewer', desc: 'reviews the plan' })
+    expect(line).toBe(`/party join '${LOCAL_REF}' --as reviewer --desc "reviews the plan"`)
+  })
+
+  it('tells the guest to pick a name when none is pinned', () => {
+    const line = generateSkillInvite({ ref: LOCAL_REF })
+    expect(line).toBe(`/party join '${LOCAL_REF}' --as <pick-a-unique-name>`)
   })
 })

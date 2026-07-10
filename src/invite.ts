@@ -11,6 +11,17 @@ export interface InviteOptions {
 }
 
 /**
+ * The short invite for a guest that already has the agents-party skill installed (`agents-party install …`): one
+ * pasteable line — the skill itself carries the behaviour contract, so nothing else travels with it. For guests without
+ * the skill (or on another machine), hand them generateInvitePrompt instead.
+ */
+export const generateSkillInvite = (opts: InviteOptions): string => {
+  const name = opts.guestName ?? '<pick-a-unique-name>'
+  const descFlag = opts.desc === undefined ? '' : ` --desc "${opts.desc}"`
+  return `/party join '${opts.ref}' --as ${name}${descFlag}`
+}
+
+/**
  * The self-contained prompt a host hands to a guest session. It carries everything inline — the guest's machine has
  * none of our files. Paste it into any agent that has a shell.
  */

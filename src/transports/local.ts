@@ -24,6 +24,7 @@ const rowToMessage = (row: Record<string, unknown>): Message => ({
   kind: row.kind as Message['kind'],
   text: String(row.text),
   ...(row.reply_to == null ? {} : { replyTo: String(row.reply_to) }),
+  ...(Number(row.diff) === 0 ? {} : { diff: true }),
 })
 
 class LocalTransport implements Transport {
@@ -36,8 +37,8 @@ class LocalTransport implements Transport {
     const ts = Date.now()
     const recipients = msg.to === 'all' ? 'all' : JSON.stringify(msg.to)
     const result = this.db.run(
-      'INSERT INTO messages (id, ts, sender, recipients, kind, text, reply_to) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, ts, msg.from, recipients, msg.kind, msg.text, msg.replyTo ?? null],
+      'INSERT INTO messages (id, ts, sender, recipients, kind, text, reply_to, diff) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, ts, msg.from, recipients, msg.kind, msg.text, msg.replyTo ?? null, msg.diff === true ? 1 : 0],
     )
     return Promise.resolve({ ...msg, id, ts, cursor: String(result.lastInsertRowid) })
   }

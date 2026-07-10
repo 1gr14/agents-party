@@ -33,13 +33,14 @@ export class PartyClient {
     return this.transport.join(this.name, opts)
   }
 
-  send(text: string, opts: { to?: Recipients; replyTo?: string } = {}): Promise<Message> {
+  send(text: string, opts: { to?: Recipients; replyTo?: string; diff?: boolean } = {}): Promise<Message> {
     return this.transport.send({
       from: this.name,
       to: opts.to ?? 'all',
       kind: 'message',
       text,
       ...(opts.replyTo === undefined ? {} : { replyTo: opts.replyTo }),
+      ...(opts.diff === true ? { diff: true } : {}),
     })
   }
 

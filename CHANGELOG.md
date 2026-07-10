@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.1.3 — 2026-07-10
+
 - **Breaking (pre-publish):** cross-machine parties over ntfy are now created
   with `create --ntfy`; `--remote` is reserved for hosted parties on
   agents-party.com (coming soon — the flag explains and points at `--ntfy`).

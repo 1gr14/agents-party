@@ -5,6 +5,10 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- The `lucide-react` peer accepts 1.x as well. Icons moved to a new major
+  while the range still said `^0.560.0`, so an app on the current lucide could
+  not install `agents-party/ui` under npm at all.
+
 ## 0.4.2 — 2026-08-05
 
 - **0.4.0 and 0.4.1 never reached npm.** Both tags were pushed, both runs died

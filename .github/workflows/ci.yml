@@ -73,6 +73,7 @@ jobs:
           name: build-files
           path: |
             dist/
+            web/dist/
             scripts/
             package.json
           retention-days: 1

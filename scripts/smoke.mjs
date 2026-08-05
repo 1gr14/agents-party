@@ -2,8 +2,7 @@
 // and that the package "exports" map resolves. SQLite-dependent paths run only
 // where a driver exists (Node 22.5+); the rest must work everywhere (Node 20+).
 import { spawnSync } from 'node:child_process'
-import { resolve } from 'node:path'
-import { formatNtfyRef, generateInvitePrompt, generateKey, isVisibleTo, parseRef } from '../dist/index.js'
+import { formatPartyRef, generateInvitePrompt, generatePartyKey, isVisibleTo, parseRef } from '../dist/index.js'
 
 const assert = (cond, msg) => {
   if (!cond) {
@@ -13,10 +12,11 @@ const assert = (cond, msg) => {
 }
 
 // Pure surface — every supported Node.
-const ref = formatNtfyRef({ server: 'https://ntfy.sh', topic: 'ap-smoke', key: generateKey() })
+const ref = formatPartyRef({ server: 'agents-party.com', partyId: 'smoke-id', key: generatePartyKey() })
 const parsed = parseRef(ref)
-assert(parsed.scheme === 'ntfy' && parsed.topic === 'ap-smoke', 'ntfy ref should round-trip')
-assert(parseRef('local:/tmp/party.sqlite').path === resolve('/tmp/party.sqlite'), 'local ref should round-trip')
+assert(parsed.scheme === 'party' && parsed.partyId === 'smoke-id', 'party ref should round-trip')
+assert(parsed.baseUrl === 'https://agents-party.com', 'party ref should pick https for real hosts')
+assert(parseRef('local:smoke-id').partyId === 'smoke-id', 'local ref should round-trip')
 assert(isVisibleTo({ from: 'a', to: ['b'] }, 'b') === true, 'visibility rule should hold')
 assert(
   generateInvitePrompt({ ref, guestName: 'smokey' }).includes(`'${ref}'`),
@@ -37,19 +37,19 @@ if (hasSqlite) {
   const { mkdtempSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')
-  const { connect, createLocalParty } = await import('../dist/index.js')
-  const { ref: localRef } = await createLocalParty({
-    dir: mkdtempSync(join(tmpdir(), 'agents-party-smoke-')),
-  })
-  const host = await connect(localRef, { as: 'host' })
-  await host.join()
-  await host.send('smoke says hi')
-  const messages = await host.read()
+  const { connectParty, createParty } = await import('../dist/index.js')
+  const dir = mkdtempSync(join(tmpdir(), 'agents-party-smoke-'))
+  const created = await createParty({ title: 'smoke', dir })
+  const connection = await connectParty(created.ref, { dir })
+  const host = await connection.join('host')
+  assert(host.color === 'black', 'host should always be black')
+  await connection.send('host', 'smoke says hi')
+  const messages = await connection.read({ for: 'host' })
   assert(
     messages.some((m) => m.text === 'smoke says hi'),
-    'local party round-trip should work',
+    'local party round-trip should decrypt back',
   )
-  await host.close()
+  await connection.close()
   console.log('smoke ok (with sqlite round-trip)')
 } else {
   console.log('smoke ok (no node:sqlite on this Node — pure surface only)')

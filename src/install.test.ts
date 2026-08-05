@@ -6,14 +6,20 @@ import { install } from './install.js'
 
 const makeTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'agents-party-install-'))
 
+const expectSkill = (file: string): void => {
+  const content = fs.readFileSync(file, 'utf8')
+  // The Agent Skills frontmatter is what makes the file discoverable — every target keeps it.
+  expect(content.startsWith('---')).toBe(true)
+  expect(content).toContain('name: party')
+  expect(content).toContain('agents-party listen')
+}
+
 describe('install', () => {
-  it('claude: writes the skill into the project .claude', () => {
+  it('claude: writes SKILL.md into the project .claude', () => {
     const dir = makeTmpDir()
     const { file } = install(dir, 'claude')
     expect(file).toBe(path.join(dir, '.claude', 'skills', 'party', 'SKILL.md'))
-    const content = fs.readFileSync(file ?? '', 'utf8')
-    expect(content).toContain('name: party')
-    expect(content).toContain('agents-party listen')
+    expectSkill(file)
   })
 
   it('claude --global: writes into the home .claude', () => {
@@ -21,23 +27,44 @@ describe('install', () => {
     const home = makeTmpDir()
     const { file } = install(dir, 'claude', { global: true, homeDir: home })
     expect(file).toBe(path.join(home, '.claude', 'skills', 'party', 'SKILL.md'))
-    expect(fs.existsSync(file ?? '')).toBe(true)
+    expectSkill(file)
   })
 
-  it('cursor: writes a frontmatter-free command', () => {
+  it('cursor: writes a skill, not the retired .cursor/commands prompt', () => {
     const dir = makeTmpDir()
     const { file } = install(dir, 'cursor')
-    expect(file).toBe(path.join(dir, '.cursor', 'commands', 'party.md'))
-    const content = fs.readFileSync(file ?? '', 'utf8')
-    expect(content.startsWith('---')).toBe(false)
-    expect(content).toContain('host or join an agents-party')
+    expect(file).toBe(path.join(dir, '.cursor', 'skills', 'party', 'SKILL.md'))
+    expectSkill(file)
+    expect(fs.existsSync(path.join(dir, '.cursor', 'commands'))).toBe(false)
   })
 
-  it('codex: returns a snippet instead of writing files', () => {
+  it('codex: writes a skill into .agents instead of only printing a snippet', () => {
     const dir = makeTmpDir()
-    const { file, snippet } = install(dir, 'codex')
-    expect(file).toBeUndefined()
-    expect(snippet).toContain('AGENTS.md')
-    expect(snippet).toContain('host or join an agents-party')
+    const { file, next } = install(dir, 'codex')
+    expect(file).toBe(path.join(dir, '.agents', 'skills', 'party', 'SKILL.md'))
+    expectSkill(file)
+    expect(next).toContain('AGENTS.md')
+  })
+
+  it('codex --global: writes into the home .agents', () => {
+    const dir = makeTmpDir()
+    const home = makeTmpDir()
+    const { file } = install(dir, 'codex', { global: true, homeDir: home })
+    expect(file).toBe(path.join(home, '.agents', 'skills', 'party', 'SKILL.md'))
+    expectSkill(file)
+  })
+
+  it('tells the user what to do next, and which scope the file landed in', () => {
+    const dir = makeTmpDir()
+    const home = makeTmpDir()
+    // The CLI defaults to the home scope (a skill is personal); a project install is the deliberate narrowing.
+    const global = install(dir, 'claude', { global: true, homeDir: home })
+    expect(global.next).toContain('/party')
+    expect(global.next).toContain('every project on this machine')
+
+    const local = install(dir, 'claude', { homeDir: home })
+    expect(local.next).toContain('/party')
+    expect(local.next).toContain(dir)
+    expect(local.next).toContain('travels with the repo')
   })
 })

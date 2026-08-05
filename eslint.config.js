@@ -12,6 +12,9 @@ export default defineConfig([
       '**/dist-npm/**',
       '**/.husky/**',
       '**/.git/**',
+      // The Point0 web app is a separate sub-application with its own bundler/toolchain (Vite + Point0, its own
+      // tsconfig and generated code); it is not linted by the package's type-aware config.
+      'web/**',
       'tsdown.config.ts',
       'eslint.config.js',
       '.commitlintrc.js',

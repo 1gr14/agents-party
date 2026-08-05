@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -12,19 +12,56 @@ interface CliResult {
   stderr: string
 }
 
-const cli = (...args: string[]): CliResult => {
-  const result = Bun.spawnSync({ cmd: [process.execPath, CLI, ...args] })
-  return {
-    code: result.exitCode,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-  }
+let dir = ''
+
+beforeEach(() => {
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agents-party-cli-'))
+})
+
+afterEach(() => {
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+/**
+ * Run the CLI in a fresh process with the data dir isolated via AGENTS_PARTY_DIR. Async Bun.spawn (not spawnSync): a
+ * synchronous spawn with a stdin buffer loses stdin on Linux, and long-running commands (listen) need to be awaited.
+ */
+const cli = async (...args: string[]): Promise<CliResult> => {
+  const proc = Bun.spawn({
+    cmd: [process.execPath, CLI, ...args],
+    env: { ...process.env, AGENTS_PARTY_DIR: dir },
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [code, stdout, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ])
+  return { code, stdout, stderr }
 }
 
-const makeTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'agents-party-cli-'))
+/** Like `cli`, but feeds `input` on stdin — for testing that piped text (patches) is sent verbatim. */
+const cliStdin = async (input: string, ...args: string[]): Promise<CliResult> => {
+  const proc = Bun.spawn({
+    cmd: [process.execPath, CLI, ...args],
+    env: { ...process.env, AGENTS_PARTY_DIR: dir },
+    stdin: new Blob([input]),
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  const [code, stdout, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ])
+  return { code, stdout, stderr }
+}
 
-const createParty = (dir: string): string => {
-  const created = cli('create', '--name', 'demo', '--dir', dir)
+/** create auto-joins the caller as `organizer` and prints the local ref — return it. */
+const createParty = async (): Promise<string> => {
+  const created = await cli('create', '--title', 'demo')
   expect(created.code).toBe(0)
   const ref = /ref:\s+(\S+)/.exec(created.stdout)?.[1]
   if (!ref) throw new Error(`no ref in output: ${created.stdout}`)
@@ -32,288 +69,105 @@ const createParty = (dir: string): string => {
 }
 
 describe('cli', () => {
-  it('help prints usage and exits 0', () => {
-    const result = cli('help')
+  it('help prints usage and lists commands, exits 0', async () => {
+    const result = await cli('help')
     expect(result.code).toBe(0)
     expect(result.stdout).toContain('party line for AI agents')
+    expect(result.stdout).toContain('Usage:')
+    expect(result.stdout).toContain('agents-party create')
+    expect(result.stdout).toContain('agents-party join')
     expect(result.stdout).toContain('Exit codes')
   })
 
-  it('create → join → send → read round-trip', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
+  it('create prints a local ref and an invite hint', async () => {
+    const created = await cli('create', '--title', 'demo')
+    expect(created.code).toBe(0)
+    expect(created.stdout).toContain('ref:    local:')
+    expect(created.stdout).toContain('joined: organizer')
+    expect(created.stdout).toContain('invite:')
+  })
 
-    expect(cli('join', ref, '--as', 'guest').code).toBe(0)
+  it('join → send → read round-trip shows plaintext to the recipient', async () => {
+    const ref = await createParty()
+    expect((await cli('join', ref, '--as', 'guest')).code).toBe(0)
 
-    const sent = cli('send', ref, '--as', 'host', '--to', 'guest', 'hello guest')
+    const sent = await cli('send', ref, '--as', 'organizer', '--to', 'guest', 'hello guest')
     expect(sent.code).toBe(0)
     expect(sent.stdout).toContain('→ guest')
 
-    const read = cli('read', ref, '--as', 'guest', '--json')
+    const read = await cli('read', ref, '--as', 'guest')
     expect(read.code).toBe(0)
-    const messages = read.stdout
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line) as { text: string; from: string; kind: string })
-    const chat = messages.filter((m) => m.kind === 'message')
-    expect(chat).toEqual([{ ...chat[0], from: 'host', text: 'hello guest' }])
+    expect(read.stdout).toContain('hello guest')
 
-    const who = cli('who', ref)
-    expect(who.stdout).toContain('host\tactive')
+    const who = await cli('who', ref)
+    expect(who.stdout).toContain('organizer\tactive')
     expect(who.stdout).toContain('guest\tactive')
   })
 
-  it('DMs stay invisible to non-recipients', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest')
-    cli('join', ref, '--as', 'other')
-    cli('send', ref, '--as', 'host', '--to', 'guest', 'secret')
-    expect(cli('read', ref, '--as', 'other').stdout).not.toContain('secret')
-    expect(cli('read', ref, '--as', 'guest').stdout).toContain('secret')
+  it('send pipes multiline stdin verbatim — a patch survives byte-exact', async () => {
+    const ref = await createParty()
+    const patch = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1,2 +1,2 @@\n-old\n+new\n line2\n'
+    const sent = await cliStdin(patch, 'send', ref, '--as', 'organizer')
+    expect(sent.code).toBe(0)
+
+    const read = await cliStdin('', 'read', ref, '--as', 'organizer', '--json')
+    expect(read.code).toBe(0)
+    const line = read.stdout
+      .trim()
+      .split('\n')
+      .find((l) => l.includes('"kind":"message"'))
+    expect(line).toBeDefined()
+    expect((JSON.parse(line!) as { text: string }).text).toBe(patch)
   })
 
-  it('listen exits 2 on timeout when nothing arrives', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest')
-    const result = cli('listen', ref, '--as', 'guest', '--timeout', '0.3')
+  it('--to addressing is invisible to a third participant', async () => {
+    const ref = await createParty()
+    await cli('join', ref, '--as', 'guest')
+    await cli('join', ref, '--as', 'other')
+    await cli('send', ref, '--as', 'organizer', '--to', 'guest', 'secret')
+    expect((await cli('read', ref, '--as', 'other')).stdout).not.toContain('secret')
+    expect((await cli('read', ref, '--as', 'guest')).stdout).toContain('secret')
+  })
+
+  it('listen exits 2 on timeout when nothing arrives', async () => {
+    const ref = await createParty()
+    const result = await cli('listen', ref, '--as', 'organizer', '--timeout', '1')
     expect(result.code).toBe(2)
     expect(result.stdout).toBe('')
   })
 
-  it('listen wakes when a message for me lands', async () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest')
-
-    const listener = Bun.spawn({
-      cmd: [process.execPath, CLI, 'listen', ref, '--as', 'guest', '--timeout', '10', '--json'],
-      stdout: 'pipe',
-    })
-    await Bun.sleep(400)
-    expect(cli('send', ref, '--as', 'host', 'are you there?').code).toBe(0)
-    expect(await listener.exited).toBe(0)
-    const output = await new Response(listener.stdout).text()
-    expect(JSON.parse(output.trim())).toMatchObject({ from: 'host', text: 'are you there?' })
-  })
-
-  it('invite prints a self-contained prompt', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    const result = cli('invite', ref, '--for', 'win-agent', '--desc', 'runs windows tests')
+  it('invite prints a self-contained prompt with the ref and a human hint', async () => {
+    const ref = await createParty()
+    const result = await cli('invite', ref, '--for', 'win-agent', '--desc', 'runs windows tests')
     expect(result.code).toBe(0)
-    expect(result.stdout).toContain(`'${ref}'`)
+    expect(result.stdout).toContain(ref)
     expect(result.stdout).toContain('--as win-agent')
-    expect(result.stdout).toContain('--desc "runs windows tests"')
+    expect(result.stdout).toContain('A HUMAN reading this?') // local ref → the local web viewer hint
+    const remote = await cli('invite', 'party:example.com/11111111-2222-3333-4444-555555555555#k=abc')
+    expect(remote.stdout).toContain('https://example.com/join/11111111-2222-3333-4444-555555555555#k=abc')
   })
 
-  it('invite without --for tells the guest to pick a name', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    const result = cli('invite', ref)
-    expect(result.code).toBe(0)
-    expect(result.stdout).toContain('pick one yourself')
-    expect(result.stdout).toContain('<your-name>')
-  })
-
-  it('invite --skill prints the one-line /party command', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    const result = cli('invite', ref, '--for', 'reviewer', '--desc', 'reviews the plan', '--skill')
+  it('invite --skill prints the one-line /party command', async () => {
+    const ref = await createParty()
+    const result = await cli('invite', ref, '--for', 'reviewer', '--desc', 'reviews the plan', '--skill')
     expect(result.code).toBe(0)
     expect(result.stdout.trim()).toBe(`/party join '${ref}' --as reviewer --desc "reviews the plan"`)
   })
 
-  it('create --remote without an account token explains where to get one', () => {
-    const result = cli('create', '--remote')
+  it('delete --yes removes the party; a later command fails with exit 1', async () => {
+    const ref = await createParty()
+    const deleted = await cli('delete', ref, '--yes')
+    expect(deleted.code).toBe(0)
+    expect(deleted.stdout).toContain('deleted:')
+
+    const who = await cli('who', ref)
+    expect(who.code).toBe(1)
+    expect(who.stderr).toContain('agents-party:')
+  })
+
+  it('unknown command exits 1', async () => {
+    const result = await cli('dance')
     expect(result.code).toBe(1)
-    expect(result.stderr).toContain('agents-party.com/settings')
-    expect(result.stderr).toContain('AGENTS_PARTY_TOKEN')
-  })
-
-  it('send --diff marks the message and keeps the patch verbatim', async () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'reviewer')
-    const patch = '--- a/f.ts\n+++ b/f.ts\n@@ -1 +1 @@\n-old\n+new\n'
-    // stdin is a real pipe, like `git diff | agents-party send --diff` —
-    // Bun.spawnSync({stdin: Buffer}) delivers an empty stream on Linux.
-    const proc = Bun.spawn({
-      cmd: [process.execPath, CLI, 'send', ref, '--as', 'reviewer', '--diff', '--json'],
-      stdin: 'pipe',
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
-    proc.stdin.write(patch)
-    await proc.stdin.end()
-    const [code, stdout, stderr] = await Promise.all([
-      proc.exited,
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ])
-    // Assert stderr alongside the code so a CI failure shows the actual error.
-    expect({ code, stderr }).toEqual({ code: 0, stderr: '' })
-    expect(JSON.parse(stdout) as object).toMatchObject({ diff: true, text: patch })
-
-    const read = cli('read', ref, '--as', 'host')
-    expect(read.stdout).toContain('[diff]')
-    const exported = cli('export', ref, '--as', 'host')
-    expect(exported.stdout).toContain('sent a diff:')
-    expect(exported.stdout).toContain('```diff')
-  })
-
-  it('desc shows up in who; reply-to lands in the message', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest', '--desc', 'reviews diffs')
-    expect(cli('who', ref).stdout).toContain('reviews diffs')
-
-    const sent = cli('send', ref, '--as', 'host', '--json', 'question')
-    const sentMsg = JSON.parse(sent.stdout) as { id: string }
-    cli('send', ref, '--as', 'guest', '--reply-to', sentMsg.id, 'answer')
-    const read = cli('read', ref, '--as', 'host', '--json')
-    const answer = read.stdout
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line) as { text: string; replyTo?: string })
-      .find((m) => m.text === 'answer')
-    expect(answer?.replyTo).toBe(sentMsg.id)
-  })
-
-  it('close freezes the party; export prints the transcript', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest', '--desc', 'helper')
-    cli('send', ref, '--as', 'host', 'wrap it up')
-    const closed = cli('close', ref, '--as', 'host')
-    expect(closed.code).toBe(0)
-    const late = cli('send', ref, '--as', 'guest', 'am I late?')
-    expect(late.code).toBe(1)
-    expect(late.stderr).toContain('closed')
-
-    const exported = cli('export', ref, '--as', 'host')
-    expect(exported.code).toBe(0)
-    expect(exported.stdout).toContain('# agents-party transcript')
-    expect(exported.stdout).toContain('guest (helper)')
-    expect(exported.stdout).toContain('wrap it up')
-    expect(exported.stdout).toContain('party closed by host')
-  })
-
-  it('tail follows the party until timeout', async () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest')
-    const tail = Bun.spawn({
-      cmd: [process.execPath, CLI, 'tail', ref, '--as', 'host', '--timeout', '2'],
-      stdout: 'pipe',
-    })
-    await Bun.sleep(400)
-    cli('send', ref, '--as', 'guest', 'live message')
-    expect(await tail.exited).toBe(0)
-    const output = await new Response(tail.stdout).text()
-    expect(output).toContain('guest joined')
-    expect(output).toContain('live message')
-  })
-
-  it("--to '*' broadcasts to everyone", () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    cli('join', ref, '--as', 'guest')
-    const sent = cli('send', ref, '--as', 'host', '--to', '*', 'to everyone')
-    expect(sent.code).toBe(0)
-    expect(sent.stdout).toContain('→ *')
-    expect(cli('read', ref, '--as', 'guest').stdout).toContain('to everyone')
-  })
-
-  it('refuses to join under a reserved or malformed name', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    const asAll = cli('join', ref, '--as', 'all')
-    expect(asAll.code).toBe(1)
-    expect(asAll.stderr).toContain('reserved')
-    const asStar = cli('join', ref, '--as', '*')
-    expect(asStar.code).toBe(1)
-    expect(asStar.stderr).toContain('Invalid participant name')
-  })
-
-  it('prune dry-run lists old files and skips fresh ones', () => {
-    const dir = makeTmpDir()
-    const oldRef = createParty(dir)
-    createParty(dir) // a second, fresh party that must survive the age filter
-    const oldFile = oldRef.slice('local:'.length)
-    // Age the first party's file past the 30-day default.
-    const past = (Date.now() - 45 * 86_400_000) / 1000
-    fs.utimesSync(oldFile, past, past)
-
-    const result = cli('prune', '--dir', dir)
-    expect(result.code).toBe(0)
-    expect(result.stdout).toContain(path.basename(oldFile))
-    expect(result.stdout).toContain('45d ago')
-    expect(result.stdout).toContain('run again with --yes')
-    // The dry run touches nothing.
-    expect(fs.existsSync(oldFile)).toBe(true)
-    // Exactly one party (the old one) is selected; the fresh one is not listed.
-    expect(result.stdout).toContain('1 party')
-  })
-
-  it('prune --yes deletes the selected files', () => {
-    const dir = makeTmpDir()
-    const ref = createParty(dir)
-    const file = ref.slice('local:'.length)
-    const past = (Date.now() - 45 * 86_400_000) / 1000
-    fs.utimesSync(file, past, past)
-
-    const result = cli('prune', '--dir', dir, '--yes')
-    expect(result.code).toBe(0)
-    expect(result.stdout).toContain('Deleted 1 party')
-    expect(fs.existsSync(file)).toBe(false)
-  })
-
-  it('prune --closed selects only closed parties', () => {
-    const dir = makeTmpDir()
-    const openRef = createParty(dir)
-    const closedRef = createParty(dir)
-    cli('close', closedRef, '--as', 'host')
-
-    const result = cli('prune', '--dir', dir, '--closed')
-    expect(result.code).toBe(0)
-    expect(result.stdout).toContain(path.basename(closedRef.slice('local:'.length)))
-    expect(result.stdout).not.toContain(path.basename(openRef.slice('local:'.length)))
-    expect(result.stdout).toContain('1 party')
-  })
-
-  it('prune --all with fresh files, and nothing-to-prune when empty', () => {
-    const dir = makeTmpDir()
-    createParty(dir)
-    createParty(dir)
-    // Fresh files: the default age filter skips them, --all overrides it.
-    expect(cli('prune', '--dir', dir).stdout).toContain('Nothing to prune.')
-    expect(cli('prune', '--dir', dir, '--all').stdout).toContain('2 parties')
-
-    const emptyDir = makeTmpDir()
-    expect(cli('prune', '--dir', emptyDir).stdout).toContain('Nothing to prune.')
-  })
-
-  it('prune rejects a malformed --older-than duration', () => {
-    const dir = makeTmpDir()
-    createParty(dir)
-    const result = cli('prune', '--dir', dir, '--older-than', 'soon')
-    expect(result.code).toBe(1)
-    expect(result.stderr).toContain('Invalid duration')
-  })
-
-  it('fails clearly on bad input', () => {
-    const unknown = cli('dance')
-    expect(unknown.code).toBe(1)
-    expect(unknown.stderr).toContain('unknown command')
-
-    const noName = cli('join', 'local:/tmp/nope.sqlite')
-    expect(noName.code).toBe(1)
-    expect(noName.stderr).toContain('--as')
-
-    const badRef = cli('join', 'wat:x', '--as', 'a')
-    expect(badRef.code).toBe(1)
-    expect(badRef.stderr).toContain('Unknown party ref')
+    expect(result.stderr).toContain('unknown command')
   })
 })

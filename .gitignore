@@ -8,6 +8,11 @@ dist-npm/
 build/
 *.tsbuildinfo
 
+# Web (Point0 SPA) build output + generated code
+web/dist/
+web/dist-server/
+web/src/generated/
+
 # Environment variables
 .env*
 

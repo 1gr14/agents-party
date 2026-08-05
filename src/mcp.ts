@@ -1,25 +1,31 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { generateInvitePrompt } from './invite.js'
-import { connect } from './party.js'
-import { createRemoteParty } from './transports/remote.js'
-import { createLocalParty } from './transports/local.js'
-import { createNtfyParty } from './transports/ntfy.js'
-import type { PartyClient } from './party.js'
-import type { Message, Recipients } from './types.js'
+import { connectParty, createParty } from './client/connection.js'
+import type { DecryptableMessage, PartyConnection } from './client/connection.js'
+import { tokenForServer } from './client/config.js'
+import { parseRef } from './core/refs.js'
+import type { Recipients } from './core/types.js'
+import { generateInvitePrompt, generateSkillInvite } from './invite.js'
 
 /**
  * The MCP server: the same party operations as the CLI, for agents that have MCP but no shell — Claude Desktop, ChatGPT
  * desktop, any MCP client.
  *
  * `agents-party mcp [--ref <ref>] [--as <name>]` runs it over stdio; the optional flags become defaults so tools can be
- * called without repeating the ref and name every time.
+ * called without repeating the ref and name every time — handy when a server is pinned to a single party.
  */
 
 export interface McpDefaults {
   ref?: string
   as?: string
+  /**
+   * Pin every tool to one party server (a hosted deployment mounts its own host here). Pinning is also a fence: refs on
+   * any other server, and `local:` refs, are refused outright — see `requireAllowedServer`.
+   */
+  server?: string
+  /** Owner token used with the pinned server (e.g. the account token behind a remote MCP capability URL). */
+  token?: string
 }
 
 interface ToolResult {
@@ -35,10 +41,11 @@ const errorText = (error: unknown): ToolResult => ({
   isError: true,
 })
 
-const messagesToText = (messages: Message[]): string =>
+const messagesToText = (messages: DecryptableMessage[]): string =>
   messages.length === 0 ? '(no messages)' : messages.map((msg) => JSON.stringify(msg)).join('\n')
 
-const MAX_LISTEN_SEC = 120
+/** Cap listen at 55 s so the tool call returns before a client's own request timeout would fire. */
+const MAX_LISTEN_SEC = 55
 
 export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.0'): McpServer => {
   const server = new McpServer({ name: 'agents-party', version })
@@ -48,67 +55,92 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     return value
   }
 
-  /** Open a client, run the operation, always close the transport. */
-  const withClient = async <T>(
-    args: { ref?: string; as?: string },
-    fallbackAs: string | undefined,
-    operation: (client: PartyClient) => Promise<T>,
+  /**
+   * Owner-token resolution. Unpinned (local CLI MCP): explicit arg, then the machine's env/config — the user's own
+   * ambient credentials. PINNED deployments (a hosted remote MCP serving many accounts): the pinned token applies to
+   * the pinned server ONLY and there is no ambient fallback — otherwise a prompt-injected `server: evil.com` argument
+   * would make the host send the account token to an attacker.
+   */
+  const resolveToken = (server: string, explicit: string | undefined): string | undefined => {
+    if (defaults.server !== undefined) {
+      return explicit ?? (server === defaults.server ? defaults.token : undefined)
+    }
+    return tokenForServer(server, explicit)
+  }
+
+  /**
+   * What a PINNED deployment is allowed to touch. Unpinned, this MCP runs on the user's own machine and any ref they
+   * hand it is theirs. Pinned (a hosted remote MCP, one process serving strangers' prompts) the ref is attacker-
+   * controlled input: `party:10.0.0.5:6379/x` would make the HOST fetch its own internal network, and `local:<id>`
+   * would create or open a SQLite file inside the container. One server, one scheme — everything else is refused.
+   */
+  const requireAllowedServer = (server: string | undefined): void => {
+    if (defaults.server === undefined || server === defaults.server) return
+    throw new Error(
+      server === undefined
+        ? `this MCP server is pinned to ${defaults.server} — local: refs are not available here, create a party with party_create`
+        : `this MCP server is pinned to ${defaults.server} — refs on other servers are refused`,
+    )
+  }
+
+  /**
+   * Open a connection to a ref, run the operation, always close it. Remote refs resolve an owner token (needed only for
+   * owner-level actions — participating needs just the ref); local refs never carry a token.
+   */
+  const withConnection = async <T>(
+    ref: string,
+    explicitToken: string | undefined,
+    operation: (connection: PartyConnection) => Promise<T>,
   ): Promise<T> => {
-    const client = await connect(need(args.ref ?? defaults.ref, 'ref'), {
-      as: args.as ?? defaults.as ?? fallbackAs ?? '',
-    })
+    const parsed = parseRef(ref)
+    requireAllowedServer(parsed.scheme === 'party' ? parsed.server : undefined)
+    const token = parsed.scheme === 'party' ? resolveToken(parsed.server, explicitToken) : undefined
+    const connection = await connectParty(ref, token === undefined ? {} : { token })
     try {
-      return await operation(client)
+      return await operation(connection)
     } finally {
-      await client.close()
+      await connection.close()
     }
   }
 
   const refArg = z
     .string()
     .optional()
-    .describe('Party ref (local:…, ntfy:… or party:…); omit if the server was started with --ref')
+    .describe('Party ref (local:<partyId> or party:<server>/<id>#k=<key>); omit if the server was started with --ref')
   const asArg = z.string().optional().describe('Your participant name; omit if the server was started with --as')
 
   server.registerTool(
     'party_create',
     {
       description:
-        'Create a new agents-party (a shared channel for several agents and humans) and join it as the host. Returns the party ref — hand it to party_invite to bring others in.',
+        'Create a new agents-party (a shared channel for several agents and humans) and return its ref. Local by default (this machine only); pass a server to host it remotely (persistent history, reachable from any machine). The ref carries the encryption key in its #k= fragment — sharing the ref shares access, so treat it like a secret. Hand it to party_join to get in and to party_invite to bring others in.',
       inputSchema: {
-        name: z.string().optional().describe('Short slug for the party name'),
-        as: z.string().optional().describe('Your participant name (default: host)'),
-        desc: z.string().optional().describe('Your role in the party, e.g. "runs the party"'),
-        ntfy: z
-          .boolean()
-          .optional()
-          .describe('Put the party on an E2E-encrypted ntfy topic (cross-machine) instead of a local file'),
-        remote: z
-          .boolean()
+        title: z.string().optional().describe('Short title for the party (default: party)'),
+        server: z
+          .string()
           .optional()
           .describe(
-            'Host the party on agents-party.com (persistent history, browser access) — needs an account token in AGENTS_PARTY_TOKEN',
+            'Host it on a party server (e.g. agents-party.com or your own) instead of a local file — needs an owner token via token, AGENTS_PARTY_TOKEN, or the login config',
           ),
-        server: z.string().optional().describe('ntfy server (default https://ntfy.sh), or relay host for remote'),
-        dir: z.string().optional().describe('Directory for the local party file'),
+        token: z.string().optional().describe('Owner token for the server (overrides AGENTS_PARTY_TOKEN and config)'),
       },
     },
     async (args) => {
       try {
-        const created =
-          args.remote === true
-            ? await createRemoteParty({ name: args.name, host: args.server })
-            : args.ntfy
-              ? createNtfyParty({ server: args.server })
-              : await createLocalParty({ name: args.name, dir: args.dir })
-        const as = args.as ?? defaults.as ?? 'host'
-        const client = await connect(created.ref, { as })
-        try {
-          await client.join({ desc: args.desc })
-        } finally {
-          await client.close()
-        }
-        return text(`ref: ${created.ref}\njoined: ${as}`)
+        // Explicit args win; a hosted deployment's pinned server/token fill the gaps — but a pinned deployment
+        // creates parties on ITS server only (see requireAllowedServer), and never sends its token elsewhere.
+        const server = args.server ?? defaults.server
+        requireAllowedServer(server)
+        const token = server === undefined ? undefined : resolveToken(server, args.token)
+        const created = await createParty({
+          ...(args.title === undefined ? {} : { title: args.title }),
+          ...(server === undefined ? {} : { server }),
+          ...(token === undefined ? {} : { token }),
+        })
+        await created.connection.close()
+        return text(
+          `ref: ${created.ref}\nnote: the ref carries the encryption key (#k=) — anyone with it can read and post, so share it only with invitees.`,
+        )
       } catch (error) {
         return errorText(error)
       }
@@ -122,13 +154,15 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
       inputSchema: {
         ref: refArg,
         as: asArg,
-        desc: z.string().optional().describe('Your role in the party'),
+        desc: z.string().optional().describe('Your role in the party, e.g. "reviews the diffs"'),
       },
     },
     async (args) => {
       try {
-        return await withClient(args, undefined, async (client) => {
-          const joined = await client.join({ desc: args.desc })
+        const ref = need(args.ref ?? defaults.ref, 'ref')
+        const as = need(args.as ?? defaults.as, 'as')
+        return await withConnection(ref, undefined, async (connection) => {
+          const joined = await connection.join(as, args.desc === undefined ? {} : { desc: args.desc })
           return text(`joined: ${joined.name}`)
         })
       } catch (error) {
@@ -141,21 +175,29 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     'party_send',
     {
       description:
-        'Send a message to the party — to everyone by default, or to specific participants. Mention people with @name in the text.',
+        'Send a message to the party — to everyone by default, or to specific participants. Mention people with @name in the text. Returns the stored message as JSON (with its cursor and id).',
       inputSchema: {
         ref: refArg,
         as: asArg,
         text: z.string().describe('The message text'),
-        to: z.array(z.string()).optional().describe('Deliver only to these participant names (omit for everyone)'),
+        to: z
+          .union([z.literal('*'), z.array(z.string())])
+          .optional()
+          .describe('Deliver only to these participant names, or "*" for everyone (the default)'),
         replyTo: z.string().optional().describe('Id of the message this replies to'),
-        diff: z.boolean().optional().describe('The text is a unified diff — clients render it as one'),
       },
     },
     async (args) => {
       try {
-        return await withClient(args, undefined, async (client) => {
-          const to: Recipients = args.to === undefined || args.to.length === 0 ? '*' : args.to
-          const sent = await client.send(args.text, { to, replyTo: args.replyTo, diff: args.diff })
+        const ref = need(args.ref ?? defaults.ref, 'ref')
+        const as = need(args.as ?? defaults.as, 'as')
+        return await withConnection(ref, undefined, async (connection) => {
+          const to: Recipients =
+            args.to === undefined || (Array.isArray(args.to) && args.to.length === 0) ? '*' : args.to
+          const sent = await connection.send(as, args.text, {
+            to,
+            ...(args.replyTo === undefined ? {} : { replyTo: args.replyTo }),
+          })
           return text(JSON.stringify(sent))
         })
       } catch (error) {
@@ -168,17 +210,25 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     'party_read',
     {
       description:
-        'Read the party conversation visible to you (broadcasts, messages addressed to you, your own). Returns JSON lines; each message carries a cursor — pass the last one as "since" next time to read only newer messages.',
+        'Read the party conversation visible to you (broadcasts, messages addressed to you, your own). Returns JSON lines; each message carries a cursor — pass the last one as "since" next time to read only newer messages. A message that cannot be decrypted comes back with "undecrypted": true — that means the ref is missing its #k= key.',
       inputSchema: {
         ref: refArg,
         as: asArg,
-        since: z.string().optional().describe('Opaque cursor from a previous read'),
+        since: z.string().optional().describe('Opaque cursor from a previous read — returns only messages after it'),
+        limit: z.number().int().min(1).optional().describe('Cap the number of messages returned'),
       },
     },
     async (args) => {
       try {
-        return await withClient(args, undefined, async (client) => {
-          return text(messagesToText(await client.read({ since: args.since })))
+        const ref = need(args.ref ?? defaults.ref, 'ref')
+        const asName = args.as ?? defaults.as
+        return await withConnection(ref, undefined, async (connection) => {
+          const messages = await connection.read({
+            ...(asName === undefined ? {} : { for: asName }),
+            ...(args.since === undefined ? {} : { since: args.since }),
+            ...(args.limit === undefined ? {} : { limit: args.limit }),
+          })
+          return text(messagesToText(messages))
         })
       } catch (error) {
         return errorText(error)
@@ -190,22 +240,28 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     'party_listen',
     {
       description:
-        "Wait for the next message from someone else (blocks up to timeoutSec, max 120). Returns the new messages as JSON lines, or 'TIMEOUT' if nothing arrived — call it again to keep listening.",
+        "Wait for the next message from someone else (blocks up to timeoutSec, max 55). Returns the new messages as JSON lines, or 'TIMEOUT' if nothing arrived — call it again to keep listening.",
       inputSchema: {
         ref: refArg,
         as: asArg,
         since: z.string().optional().describe('Opaque cursor to start after (default: only brand-new messages)'),
-        timeoutSec: z.number().min(0).max(MAX_LISTEN_SEC).optional().describe('How long to wait (default 25 s)'),
-        toMe: z.boolean().optional().describe('Wake only on messages addressed to me or mentioning @me'),
+        timeoutSec: z
+          .number()
+          .min(0)
+          .max(MAX_LISTEN_SEC)
+          .optional()
+          .describe('How long to wait (default 25 s, max 55)'),
       },
     },
     async (args) => {
       try {
-        return await withClient(args, undefined, async (client) => {
-          const messages = await client.listen({
-            since: args.since,
-            timeoutMs: (args.timeoutSec ?? 25) * 1000,
-            toMe: args.toMe,
+        const ref = need(args.ref ?? defaults.ref, 'ref')
+        const as = need(args.as ?? defaults.as, 'as')
+        const timeoutMs = Math.min(args.timeoutSec ?? 25, MAX_LISTEN_SEC) * 1000
+        return await withConnection(ref, undefined, async (connection) => {
+          const messages = await connection.listen(as, {
+            timeoutMs,
+            ...(args.since === undefined ? {} : { since: args.since }),
           })
           return text(messages.length === 0 ? 'TIMEOUT' : messagesToText(messages))
         })
@@ -223,39 +279,12 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     },
     async (args) => {
       try {
-        return await withClient({ ref: args.ref, as: 'observer' }, 'observer', async (client) => {
-          const participants = await client.who()
+        const ref = need(args.ref ?? defaults.ref, 'ref')
+        return await withConnection(ref, undefined, async (connection) => {
+          const participants = await connection.participants()
           if (participants.length === 0) return text('(nobody joined yet)')
           return text(participants.map((p) => JSON.stringify(p)).join('\n'))
         })
-      } catch (error) {
-        return errorText(error)
-      }
-    },
-  )
-
-  server.registerTool(
-    'party_invite',
-    {
-      description:
-        'Generate the self-contained invite prompt for another agent session — paste it there verbatim; it carries the ref, the commands and the behaviour contract.',
-      inputSchema: {
-        ref: refArg,
-        guestName: z.string().optional().describe('Pin the guest name; omit to let the guest pick its own'),
-        desc: z.string().optional().describe("The guest's role in the party"),
-        from: z.string().optional().describe('Who invites (default: host)'),
-      },
-    },
-    async (args) => {
-      try {
-        return text(
-          generateInvitePrompt({
-            ref: need(args.ref ?? defaults.ref, 'ref'),
-            guestName: args.guestName,
-            desc: args.desc,
-            from: args.from ?? defaults.as,
-          }),
-        )
       } catch (error) {
         return errorText(error)
       }
@@ -270,9 +299,11 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     },
     async (args) => {
       try {
-        return await withClient(args, undefined, async (client) => {
-          await client.leave()
-          return text(`left: ${client.name}`)
+        const ref = need(args.ref ?? defaults.ref, 'ref')
+        const as = need(args.as ?? defaults.as, 'as')
+        return await withConnection(ref, undefined, async (connection) => {
+          await connection.leave(as)
+          return text(`left: ${as}`)
         })
       } catch (error) {
         return errorText(error)
@@ -281,34 +312,26 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
   )
 
   server.registerTool(
-    'party_close',
+    'party_invite',
     {
-      description: 'Close the party for everyone — no new joins or messages after this.',
-      inputSchema: { ref: refArg, as: asArg },
+      description:
+        'Generate the invite text for another agent session. By default a self-contained prompt — paste it there verbatim; it carries the ref, the commands and the behaviour contract. Pass skill: true for the one-line /party join command instead (for guests that already have the skill installed).',
+      inputSchema: {
+        ref: refArg,
+        for: z.string().optional().describe('Pin the guest name; omit to let the guest pick its own'),
+        desc: z.string().optional().describe("The guest's role in the party"),
+        skill: z.boolean().optional().describe('Return the one-line /party join command instead of the full prompt'),
+      },
     },
     async (args) => {
       try {
-        return await withClient(args, undefined, async (client) => {
-          await client.endParty()
-          return text(`party closed by ${client.name}`)
-        })
-      } catch (error) {
-        return errorText(error)
-      }
-    },
-  )
-
-  server.registerTool(
-    'party_export',
-    {
-      description: 'Export the party transcript (your view) as JSON lines.',
-      inputSchema: { ref: refArg, as: asArg },
-    },
-    async (args) => {
-      try {
-        return await withClient(args, undefined, async (client) => {
-          return text(messagesToText(await client.read()))
-        })
+        const invite = {
+          ref: need(args.ref ?? defaults.ref, 'ref'),
+          ...(args.for === undefined ? {} : { guestName: args.for }),
+          ...(args.desc === undefined ? {} : { desc: args.desc }),
+          ...(defaults.as === undefined ? {} : { from: defaults.as }),
+        }
+        return text(args.skill === true ? generateSkillInvite(invite) : generateInvitePrompt(invite))
       } catch (error) {
         return errorText(error)
       }

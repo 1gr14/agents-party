@@ -1,12 +1,13 @@
 {
   "include": ["src/**/*", "scripts/**/*"],
-  "exclude": ["dist/**/*", "node_modules/**/*"],
+  "exclude": ["dist/**/*", "node_modules/**/*", "web/**/*"],
   "compilerOptions": {
     "types": ["node", "bun-types"],
     "outDir": "./dist",
     "module": "NodeNext",
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,

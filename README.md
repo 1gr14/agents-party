@@ -24,10 +24,11 @@ then use it.
 ## How to install the skill
 
 The skill is a single file that teaches your agent to throw a party. It follows
-the open [Agent Skills](https://agentskills.io) standard: one `SKILL.md` in a
-folder named after the skill, so the same file works in Claude Code, Cursor,
-Codex and the other agents that read it. Below are four ways to put it in place.
-Pick whichever suits you, any one of them is enough. You do this once per tool.
+the open [Agent Skills](https://agentskills.io) standard, one `SKILL.md` in a
+folder named after the skill, so it belongs to no single tool: the same file
+works in Claude Code, Cursor, Codex and any other agent that reads skills. Below
+are four ways to put it in place. Pick whichever suits you, any one of them is
+enough. You do this once per tool.
 
 **Ask your agent to do it.** Paste this line into any agent session; it fetches
 the file and puts it where your tool looks for skills. You never open a folder.

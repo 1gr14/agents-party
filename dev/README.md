@@ -189,13 +189,19 @@ runs on any Node 20+.
 
 ## Release & CI
 
-- One `main` trunk; a `v*` tag is the only thing that publishes. Cut a release
-  with `bun run release patch|minor` (bumps, promotes CHANGELOG's Unreleased,
-  commits, tags), then `git push origin main --follow-tags`.
+- One `main` trunk; a release is a push to `main` whose pipeline goes green.
+  Nothing runs on a tag push — the `v<version>` tag is the RESULT of a release,
+  created by CI after the publish, so a tag can never point at a build nobody
+  proved. Cut a release with `bun run release patch|minor` (bumps, promotes
+  CHANGELOG's Unreleased, commits — no tag), then `git push origin main`.
+- If that run goes red, the version stays yours: fix it with a normal commit and
+  push again. `bun run release` refuses to bump on top of a version that is in
+  the tree but not on npm (`--force` to skip it for good anyway).
 - CI (`.github/workflows/ci.yml`): build + typechecks + lint + tests +
-  publint/attw on PRs and tags; a `windows` job and a Node 20/22/24 smoke matrix
-  gate `publish`. Publishing auths via npm **Trusted Publisher** (OIDC,
+  publint/attw on PRs and pushes to `main`; a `windows` job and a Node 20/22/24
+  smoke matrix gate `release`. The `release` job publishes only what npm doesn't
+  have yet, then tags. Publishing auths via npm **Trusted Publisher** (OIDC,
   provenance) — no tokens in CI.
-- npm is pinned to `npm@11` in the publish job: npm 12.0.0 shipped a broken
+- npm is pinned to `npm@11` in the release job: npm 12.0.0 shipped a broken
   provenance publish ("Cannot find module 'sigstore'"). Re-check before
   unpinning.

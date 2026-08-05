@@ -1,16 +1,17 @@
 name: CI
 
-# Classic OSS model: one `main` trunk, contributors fork → PR → `main`, and a `v*` tag is the only thing
-# that publishes. Pushing code never releases.
+# Classic OSS model: one `main` trunk, contributors fork → PR → `main`, and a release is a push to `main`
+# whose pipeline goes green — the `release` job publishes what npm doesn't have yet and only THEN creates
+# the `v<version>` tag. The tag is the RESULT of a release, never its trigger: nothing runs on a tag push.
 #   pull_request → main   the gate: build + type-check + lint + tests + smoke (forks run without secrets)
-#   push tag v*           the same gate, then publish (dist-tag from the version)
-# `main` is not gated on push — it only changes via an already-tested PR or a release commit (gated by its
-# tag), so a push-to-main gate would just re-test. Run the gate on a branch ad-hoc with workflow_dispatch.
+#   push → main           the same gate, then publish + tag (dist-tag from the version)
+# `main` IS gated on push, because a push to `main` is the release path — it must never publish bytes that
+# weren't just built and tested. Run the gate on a branch ad-hoc with workflow_dispatch.
 on:
   pull_request:
     branches: [main]
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +20,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never cancel a tag publish mid-flight
+  # Only PR runs are cancelled by a newer push. A run on `main` may end in a publish — never cancel it, and
+  # let the next one queue behind it so two releases can't interleave.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -133,16 +136,27 @@ jobs:
       - name: Smoke test built package
         run: node scripts/smoke.mjs
 
-  # Publish to npm — ONLY on a `v*` tag (never from a PR or a branch push; a fork can't push a tag, so
-  # untrusted code can never publish). Idempotent: publishes only if the version isn't on npm yet (bumps
-  # happen locally via `bun run release`). dist-tag is derived from the version (prerelease x.y.z-next.N →
-  # next, stable x.y.z → latest). Auth is npm OIDC Trusted Publisher (→ provenance), no NPM_TOKEN — the
-  # workflow filename (ci.yml) must match the trusted-publisher config on npm.
-  publish:
-    needs: [smoke, windows]
+  # Release — the last job of a green push to `main`, and the ONLY publish path (never from a PR or a
+  # branch push; a fork can't push to `main`, so untrusted code can never publish). It asks npm whether
+  # package.json's version is already there — if not, it publishes (bumps happen locally via
+  # `bun run release`) and only THEN creates and pushes the annotated `v<version>` tag, at the exact commit
+  # that was just built and tested. dist-tag is derived from the version (prerelease x.y.z-next.N → next,
+  # stable x.y.z → latest). Auth is npm OIDC Trusted Publisher (→ provenance), no NPM_TOKEN — the workflow
+  # filename (ci.yml) must match the trusted-publisher config on npm, which is why publishing stays here.
+  release:
+    needs: [build, smoke, windows]
     runs-on: ubuntu-latest
-    if: ${{ github.ref_type == 'tag' }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    permissions:
+      contents: write # push the release tag
+      id-token: write # OIDC: npm Trusted Publisher (provenance)
+    # Serialized across runs: two release commits pushed back to back must publish in order, or an older run
+    # could re-point `latest` at the older version. Never cancelled mid-publish.
+    concurrency:
+      group: release
+      cancel-in-progress: false
     steps:
+      # Default `persist-credentials: true` — the tag push at the end uses that GITHUB_TOKEN.
       - name: Checkout code
         uses: actions/checkout@v7
 
@@ -153,9 +167,9 @@ jobs:
           registry-url: https://registry.npmjs.org
           scope: '@1gr14'
 
+      # Pinned to 11.x: `npm@latest` is 12.x now, and installing it over the npm that Node 24 bundles leaves a
+      # global tree without `sigstore`, so the provenance publish dies with MODULE_NOT_FOUND.
       - name: Upgrade npm (OIDC Trusted Publisher needs npm >= 11.5.1)
-        # Pinned to the 11.x line: npm 12.0.0 (current `latest`) ships a broken
-        # provenance publish — "Cannot find module 'sigstore'" in libnpmpublish.
         run: npm install -g npm@11
 
       - name: Setup Bun
@@ -172,9 +186,49 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Tag guard: the tag MUST equal v${version in package.json}, so the bump and the tag can't drift.
-      - name: Channel guard (tag ↔ version)
-        run: bun run check:channel
+      # Is this version already released? `npm view` exits non-zero on E404 — for an unknown version AND for
+      # a package that was never published at all (the very first release), and both mean "go". Version
+      # 0.0.0 is the never-released sentinel: blank0 (the template this file is copied from) sits there
+      # forever, and a freshly scaffolded library does too until its first `bun run release` — neither may
+      # publish or tag anything.
+      - id: state
+        name: Is this version already published?
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$version" = "0.0.0" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "$name is at 0.0.0 — the never-released sentinel. Nothing to publish, nothing to tag."
+            exit 0
+          fi
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is already on npm — nothing to publish."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "$name@$version is not on npm — publishing."
+          fi
 
+      # Idempotent anyway (publish.ts re-asks npm itself); the gate above just keeps an ordinary push quiet.
       - name: Publish package
+        if: ${{ steps.state.outputs.release == 'true' && steps.state.outputs.published == 'false' }}
         run: bun run publish:packages
+
+      # The tag lands last: after a green pipeline and a successful publish, at the exact commit that was
+      # built, tested and shipped. Not gated on `published`, so a run that published but died before tagging
+      # heals on re-run; an existing remote tag is left alone — tags are immutable here, never moved.
+      - name: Tag the release
+        if: ${{ steps.state.outputs.release == 'true' }}
+        run: |
+          tag="v${{ steps.state.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "tag $tag already exists on origin — leaving it alone."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+          echo "tagged $tag at $GITHUB_SHA"

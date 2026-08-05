@@ -4,8 +4,8 @@
  * skipped, so it's safe to run on every push. Runs in CI with npm auth (OIDC Trusted Publisher → provenance).
  *
  * The dist-tag comes from the version: a prerelease x.y.z-next.N publishes under `--tag next`, a stable x.y.z under
- * `latest`. The tag ↔ version guard (scripts/check-channel.ts) is asserted first, so the git tag that triggered the
- * release must match the version being published. Provenance comes automatically from OIDC Trusted Publishing.
+ * `latest`. The version guard (scripts/check-channel.ts) is asserted first, so a hand-edited version can't invent a
+ * third channel. Provenance comes automatically from OIDC Trusted Publishing.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-// Channel guard first — refuse to publish if the version doesn't match the branch.
+// Version guard first — refuse to publish if the version isn't a shape that maps onto one of our channels.
 const guard = Bun.spawnSync(['bun', join(rootDir, 'scripts/check-channel.ts')], {
   stdout: 'inherit',
   stderr: 'inherit',

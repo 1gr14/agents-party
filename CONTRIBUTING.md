@@ -44,8 +44,9 @@ Run `bun run test`, `bun run types`, and `bun run lint` before you push.
   tests with `expectTypeOf` from `bun:test` (checked by `tsc`).
 - Work on a branch, not `main`, and open the PR against `main`. CI runs the full
   gate (types, lint, tests, smoke) on every PR — that green check is required to
-  merge. Releases are maintainer-only and tag-driven; you never bump versions or
-  tag in a PR.
+  merge. Releases are maintainer-only: the maintainer bumps with
+  `bun run release` and pushes `main`, and CI publishes and tags once that run
+  is green. You never bump versions or tag in a PR.
 - Keep "Allow edits from maintainers" checked.
 
 ### Commit messages

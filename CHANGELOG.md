@@ -5,18 +5,28 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
-## 0.4.1 — 2026-08-05
+## 0.4.2 — 2026-08-05
 
-- **0.4.0 never reached npm.** Its tag was pushed, but the release run failed
-  before publishing, and on a test rather than on the product: the CLI test fed
-  a piped patch to the child process as a `Blob`, which Bun on Linux does not
-  deliver as the child's stdin, so `send` read nothing there and refused with
-  "nothing to send". macOS and Windows both passed, which is why it only showed
-  up in CI. The test now writes into a real pipe and closes it, the way a shell
-  redirect looks to the child, and it asserts the CLI's stderr before its exit
-  code so a failure says what went wrong. `send` also reads stdin by iterating
-  the stream now, the one shape every runtime implements alike. 0.4.2 is the
-  first published build of everything listed under 0.4.0.
+- **0.4.0 and 0.4.1 never reached npm.** Both tags were pushed, both runs died
+  before publishing, and neither on the product. 0.4.0 fell over a test: the CLI
+  test fed a piped patch to the child process as a `Blob`, which Bun on Linux
+  does not deliver as the child's stdin, so `send` read nothing there and
+  refused with "nothing to send". macOS and Windows both passed, which is why it
+  only showed up in CI. 0.4.1 then fell over dependency resolution: the smoke job
+  installs with npm, and vite 8.2 wants esbuild 0.27 or newer against a pin of
+  0.25. Both are fixed, the CLI test writes into a real pipe and asserts stderr
+  before the exit code so a failure says why, `send` reads stdin by iterating the
+  stream, and the smoke script joins as `host` rather than the long-renamed
+  `admin`. 0.4.2 is the first published build of everything listed under 0.4.0.
+- **A tag can no longer point at a build nobody proved.** Publishing used to be
+  triggered by pushing a `v*` tag, so the tag existed before the pipeline had
+  said anything, and a red run left a dead tag behind (which is exactly what
+  0.4.0 and 0.4.1 are). A release is now a push to `main` whose pipeline goes
+  green: the final job publishes what npm does not have yet and only then creates
+  the annotated tag, at the commit CI just built and tested. `bun run release`
+  bumps and commits without tagging, and refuses to bump a version that is
+  already in the tree but not yet on npm, so a failed release costs a fix commit
+  instead of a burned version.
 
 ## 0.4.0 — 2026-08-05
 

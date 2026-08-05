@@ -1,16 +1,20 @@
 #!/usr/bin/env bun
 /**
  * release — bump this package to the next version, promote the CHANGELOG "Unreleased" section (stable only), then
- * commit + tag `v<version>`. You review and push — the tag is what triggers CI to publish (scripts/publish.ts). Nothing
- * is pushed for you; nothing is derived from commit messages.
+ * commit. Nothing is pushed for you and NOTHING IS TAGGED: you review and push `main`, the one CI run on that push
+ * builds/lints/tests as on any push, and its final `release` job publishes (scripts/publish.ts) and only THEN creates
+ * the `v<version>` tag. The tag is the RESULT of a green release, never its trigger — so a tag can never point at a
+ * commit CI has not proven, and a broken release commit costs a fix commit instead of a burned version. Nothing is
+ * derived from commit messages.
  *
  * bun run release patch 0.1.0 → 0.1.1 bun run release minor 0.1.0 → 0.2.0 bun run release prerelease 0.1.0 →
  * 0.1.0-next.0 (re-run → -next.1, -next.2 …) bun run release stable 0.2.0-next.3 → 0.2.0 (strip the prerelease suffix)
- * bun run release 0.3.0 explicit version (also accepts 0.3.0-next.0). Add --no-git to bump only (skip commit + tag).
+ * bun run release 0.3.0 explicit version (also accepts 0.3.0-next.0). Add --no-git to bump only (skip the commit).
  *
- * Classic single-branch model: everything lands on `main` and `v*` tags drive publishing. The dist-tag is derived from
- * the version (prerelease → `next`, stable → `latest`); the tag ↔ version match is enforced by scripts/check-channel.ts
- * in CI and on pre-push. The major version is PINNED (see PINNED_MAJOR below) — no command can raise it.
+ * Classic single-branch model: everything lands on `main`, and a release is just a push to `main` whose pipeline goes
+ * green. The dist-tag is derived from the version (prerelease → `next`, stable → `latest`); the tag ↔ version match
+ * holds BY CONSTRUCTION — CI reads the version out of package.json and derives the tag from it, so the two cannot
+ * drift. The major version is PINNED (see PINNED_MAJOR below) — no command can raise it.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -70,6 +74,37 @@ if (nextMajor !== PINNED_MAJOR) {
   process.exit(1)
 }
 
+// Is the version ALREADY in the tree unpublished? Then there is nothing to bump. Since the tag comes after green,
+// a version sitting in package.json that npm has never seen means the previous release never made it through — a red
+// pipeline, or it simply hasn't been pushed yet. The fix is a normal commit on `main` and a push, NOT another bump:
+// bumping here would burn that version for good (the old double-bump gotcha — a failed release left the bump in the
+// tree, the next `release patch` bumped on top of it and the unpublished number was skipped forever).
+//
+// NEVER_RELEASED is the one version this doesn't apply to: a fresh library sits at 0.0.0, which nothing ever
+// publishes (CI treats it as the sentinel too) — so its first `bun run release 0.1.0` must go straight through.
+const NEVER_RELEASED = '0.0.0'
+if (current !== NEVER_RELEASED && !process.argv.includes('--force')) {
+  const id = `${readJson(pkgPath).name as string}@${current}`
+  const view = Bun.spawnSync(['npm', 'view', id, 'version'])
+  if (view.exitCode !== 0) {
+    // Only a genuine "not there" (E404) means unpublished; anything else (offline, registry down, auth) must not be
+    // read as "unpublished" — that would silently refuse every release. Fail loudly instead.
+    const stderr = view.stderr.toString()
+    if (!/e404|404 not found/i.test(stderr)) {
+      console.error(`release: could not ask npm about ${id} — not bumping blind.\n${stderr.trim()}`)
+      process.exit(1)
+    }
+    console.info(
+      `release: ${id} is NOT on npm — ${current} is bumped but never published (a red pipeline, or you simply ` +
+        `haven't pushed yet). Nothing to bump.\n` +
+        `  Fix whatever was red with a normal commit, then: git push origin main\n` +
+        `  The green run publishes ${current} and tags v${current}.\n` +
+        `  To bump anyway and skip ${current} for good: bun run release ${arg} --force`,
+    )
+    process.exit(0)
+  }
+}
+
 // Set the version in package.json.
 const pkg = readJson(pkgPath)
 pkg.version = next
@@ -95,13 +130,13 @@ const tagName = `v${next}`
 
 if (process.argv.includes('--no-git')) {
   console.info(
-    `\nBumped to ${next} (--no-git: no commit/tag made). When ready:\n` +
-      `  git add -A && git commit -m "chore(release): ${tagName}" && git tag -a ${tagName} -m ${tagName}\n` +
-      `  git push origin main --follow-tags   # the tag triggers CI to publish`,
+    `\nBumped to ${next} (--no-git: nothing committed). When ready:\n` +
+      `  git add -A && git commit -m "chore(release): ${tagName}"\n` +
+      `  git push origin main   # the green run publishes ${next} and tags ${tagName}`,
   )
 } else {
-  // Commit + tag together so the bump and the tag can never drift (CI re-asserts tag ↔ version before publishing).
-  // Annotated tag (-a) on purpose: `git push --follow-tags` only pushes annotated tags, never lightweight ones.
+  // Commit only. The tag is created by CI at this same commit once the pipeline is green (.github/workflows/ci.yml),
+  // so the bump and the tag can't drift and no tag can ever precede a green run.
   const git = (...args: string[]) => {
     const r = Bun.spawnSync(['git', ...args], { cwd: rootDir, stdout: 'inherit', stderr: 'inherit' })
     if (!r.success) {
@@ -111,11 +146,12 @@ if (process.argv.includes('--no-git')) {
   }
   git('add', '-A')
   git('commit', '-m', `chore(release): ${tagName}`)
-  git('tag', '-a', tagName, '-m', tagName)
   console.info(
-    `\nCommitted + tagged ${tagName} (dist-tag: ${isPre ? 'next' : 'latest'}). Nothing pushed yet — review with ` +
-      `\`git show ${tagName}\`, then publish with:\n` +
-      `  git push origin main --follow-tags   # the tag triggers CI to publish\n` +
-      `To undo before pushing: git tag -d ${tagName} && git reset --soft HEAD~1`,
+    `\nCommitted the ${next} bump (dist-tag: ${isPre ? 'next' : 'latest'}). Nothing pushed, nothing tagged — CI ` +
+      `tags ${tagName} itself after the pipeline is green:\n` +
+      `  git show HEAD          # review\n` +
+      `  git push origin main   # publishes ${next} and tags ${tagName} at the end of the green run\n` +
+      `If that run goes red, fix it with a normal commit and push again — ${next} is still yours.\n` +
+      `To undo before pushing: git reset --soft HEAD~1`,
   )
 }

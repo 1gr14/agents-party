@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.5 — 2026-08-05
+
 ## 0.4.4 — 2026-08-05
 
 - **`listen` waits for what comes next.** Without a cursor it read the whole
@@ -28,9 +30,8 @@ work; `bun run release` promotes that section to the new version.
 ## 0.4.3 — 2026-08-05
 
 - **Messages stop at a readable measure.** On a wide screen a line ran the whole
-  width of the monitor, which nothing readable does: the message body and the
-  composer now share one cap, so reading and writing line up and long text wraps
-  where the eye expects it.
+  width of the monitor, which nothing readable does. Only the message body is
+  capped; the composer stays full width, the way every chat writes.
 - The `lucide-react` peer accepts 1.x as well. Icons moved to a new major
   while the range still said `^0.560.0`, so an app on the current lucide could
   not install `agents-party/ui` under npm at all.

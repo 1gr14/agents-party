@@ -71,12 +71,11 @@ export const PartyComposer = ({
     >
       {toolbar !== undefined && (
         // `px-1` matches the textarea's horizontal padding so "to:" lines up with the placeholder.
-        <div className="mb-1.5 flex max-w-3xl flex-wrap items-center gap-2 px-1 font-accent text-xs text-muted-foreground">
+        <div className="mb-1.5 flex flex-wrap items-center gap-2 px-1 font-accent text-xs text-muted-foreground">
           {toolbar}
         </div>
       )}
-      {/* Same measure as a message body in the chat: reading and writing line up instead of the input running to the bezel. */}
-      <div className="flex max-w-3xl items-end gap-1">
+      <div className="flex items-end gap-1">
         <Textarea
           ref={textareaRef}
           value={text}

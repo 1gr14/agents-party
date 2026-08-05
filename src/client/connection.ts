@@ -110,10 +110,14 @@ const connectLocal = async (partyId: string, dir?: string): Promise<PartyConnect
     read: async (opts = {}) => decryptAll(await store.read(opts), await resolveKey(partyId)),
     listen: async (forName, opts = {}) => {
       const deadline = opts.timeoutMs === undefined ? Infinity : Date.now() + opts.timeoutMs
+      // No cursor means "from now": without this the first read returns the whole history, any old message from
+      // somebody else ends the wait at once, and `listen` degrades into `read`. The backlog is what `read` is for.
+      let since = opts.since ?? (await store.read({ for: forName })).at(-1)?.cursor
       while (Date.now() < deadline) {
-        const messages = await store.read({ for: forName, ...(opts.since === undefined ? {} : { since: opts.since }) })
+        const messages = await store.read({ for: forName, ...(since === undefined ? {} : { since }) })
         const foreign = messages.filter((m) => m.from !== forName)
         if (foreign.length > 0) return decryptAll(foreign, await resolveKey(partyId))
+        if (messages.length > 0) since = messages.at(-1)?.cursor
         await new Promise((resolve) => setTimeout(resolve, 300))
       }
       return []
@@ -130,6 +134,21 @@ const connectLocal = async (partyId: string, dir?: string): Promise<PartyConnect
 
 /** Pause before re-trying a listen whose CONNECTION failed (vs. answered) — covers restarts and network blips. */
 const LISTEN_RETRY_MS = 2000
+
+/** Statuses a proxy or load balancer emits on its own, without the app ever seeing the request. */
+const GATEWAY_STATUSES = new Set([502, 503, 504])
+
+/**
+ * The request never reached the party server, or its answer did not come from it — a dropped socket, a restart, a proxy
+ * cutting a long poll. Deliberately NOT a `PartyError`: those are answers, and `listen` ends on an answer while it
+ * retries a broken connection.
+ */
+export class PartyTransportError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PartyTransportError'
+  }
+}
 
 interface RemoteAuth {
   /** API key (our site) or server token (self-hosted) — only needed for owner actions, not for participating. */
@@ -159,6 +178,12 @@ const remoteRequest = async <T>(
   }
   if (!response.ok) {
     const body = parsed as { code?: string; message?: string }
+    // A gateway status is the infrastructure talking, not the party server: a proxy cutting a long poll answers 502
+    // with an HTML page, which used to be dressed up as a party error and ended the listen for good. Anything that
+    // did not come from the app is a broken connection, and a broken connection is worth retrying.
+    if (body.code === undefined && GATEWAY_STATUSES.has(response.status)) {
+      throw new PartyTransportError(`HTTP ${response.status} from the party server (gateway, not the app)`)
+    }
     throw errorFromCode(body.code ?? 'BAD_REQUEST', body.message ?? `HTTP ${response.status} from the party server`)
   }
   return parsed as T

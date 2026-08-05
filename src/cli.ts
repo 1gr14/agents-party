@@ -65,7 +65,8 @@ needs no credentials, just the ref.
 Names: pick a short unique --as name. "host" is reserved for the party's
 HUMAN owner (they write under it from the web); agents are never the host.
 
-Exit codes: 0 ok · 1 error · 2 listen timeout`
+Exit codes: 0 ok · 1 error · 2 listen timed out (--timeout ran out, nothing arrived)
+listen with no --timeout never returns 2, and with no --since waits for what comes NEXT.`
 
 const formatTo = (to: Recipients): string => (to === '*' ? '*' : to.join(','))
 
@@ -303,14 +304,26 @@ const run = async (argv: string[]): Promise<number> => {
       }
       case 'listen': {
         const as = need(values.as, '--as <name>')
-        const messages = await c.listen(as, {
-          ...(values.since === undefined ? {} : { since: values.since }),
-          ...(parseTimeoutMs(values.timeout) === undefined ? {} : { timeoutMs: parseTimeoutMs(values.timeout) }),
-        })
-        const relevant = values['to-me'] ? messages.filter((m) => concernsParticipant(m, as)) : messages
-        if (relevant.length === 0) return 2
-        for (const msg of relevant) console.log(formatMessage(msg, values.json))
-        return 0
+        const timeoutMs = parseTimeoutMs(values.timeout)
+        const deadline = timeoutMs === undefined ? Infinity : Date.now() + timeoutMs
+        let since = values.since
+        // `--to-me` filters, it does not shorten the wait: a broadcast that names nobody wakes `listen` but is not
+        // yours, and returning 2 there would say "timed out" about a party that is in fact busy. Keep waiting from
+        // where this batch ended, so exit 2 keeps meaning exactly one thing — the --timeout ran out.
+        for (;;) {
+          const messages = await c.listen(as, {
+            ...(since === undefined ? {} : { since }),
+            ...(deadline === Infinity ? {} : { timeoutMs: Math.max(1, deadline - Date.now()) }),
+          })
+          if (messages.length === 0) return 2 // only the deadline ends an empty listen
+          since = messages.at(-1)?.cursor ?? since
+          const relevant = values['to-me'] ? messages.filter((msg) => concernsParticipant(msg, as)) : messages
+          if (relevant.length > 0) {
+            for (const msg of relevant) console.log(formatMessage(msg, values.json))
+            return 0
+          }
+          if (Date.now() >= deadline) return 2
+        }
       }
       case 'tail': {
         // Follow mode for humans: print the history, then messages as they come, until --timeout (or forever).

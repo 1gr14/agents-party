@@ -86,8 +86,16 @@ npx agents-party listen '<ref>' --as organizer --json
 
 No `--timeout`: it hangs for as long as it takes and exits only when a real
 message arrives, so you wake exactly when there is work, never just to re-arm a
-timer. **Never** wait with model-side timers. On a busy party add `--to-me` to
-wake only on messages addressed to you or mentioning `@organizer`.
+timer. **Never** wait with model-side timers. It waits for what comes NEXT: no
+`--since` means "from now", and the backlog is what `read` is for. On a busy
+party add `--to-me` to wake only on messages addressed to you or mentioning
+`@organizer`. It keeps waiting through everything else rather than cutting the
+wait short.
+
+Read the exit code, it is the whole answer: **0** a message arrived and is on
+stdout, **2** the `--timeout` you asked for ran out and nothing came (not a
+failure, just re-arm), **1** something actually broke, and stderr says what.
+Without `--timeout` there is no 2.
 
 On every wake: handle the message (do the work), reply on the party (`send`),
 give your human a one-line summary in chat, then **re-arm the listener**.

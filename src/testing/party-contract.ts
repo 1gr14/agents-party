@@ -153,6 +153,23 @@ export const describePartyContract = (label: string, makeParty: () => Promise<Pa
       await speaker.close()
     })
 
+    it('without a cursor listen waits for what comes NEXT, it does not replay the backlog', async () => {
+      const party = await makeParty()
+      const listener = await party.connect()
+      const speaker = await party.connect()
+      await listener.join('ear')
+      await speaker.join('mouth')
+      await speaker.send('mouth', 'old news')
+      // No `since`: the backlog above must NOT end this wait — `read` is what serves history.
+      const wait = listener.listen('ear', { timeoutMs: 10_000 })
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      await speaker.send('mouth', 'the new thing')
+      const messages = await wait
+      expect(messages.filter((m) => m.kind === 'message').map((m) => m.text)).toEqual(['the new thing'])
+      await listener.close()
+      await speaker.close()
+    })
+
     it('listen times out quietly when nothing arrives', async () => {
       const party = await makeParty()
       const c = await party.connect()

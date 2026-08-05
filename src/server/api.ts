@@ -381,9 +381,15 @@ export const createPartyApi = (ctx: PartyApiContext): PartyApi => {
     }
 
     if (method === 'GET' && action === 'listen') {
-      const since = url.searchParams.get('since') ?? undefined
+      let since = url.searchParams.get('since') ?? undefined
       const viewer = url.searchParams.get('for')
       if (viewer === null) throw new PartyError('BAD_REQUEST', 'listen needs ?for=<your-name>.')
+      // No cursor means "from now", not "from the beginning": without this the first read returns the whole history,
+      // any old message from somebody else ends the poll immediately, and `listen` degrades into `read` — which is the
+      // opposite of what it is for. A caller that wants the backlog asks `read` for it.
+      if (since === undefined) {
+        since = (await store.read({ for: viewer })).at(-1)?.cursor
+      }
       const timeoutSec = Math.min(
         LISTEN_MAX_SEC,
         Math.max(1, Number(url.searchParams.get('timeoutSec')) || LISTEN_DEFAULT_SEC),

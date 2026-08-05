@@ -142,6 +142,40 @@ describe('cli', () => {
     expect(result.stdout).toBe('')
   })
 
+  it('--to-me keeps waiting through a broadcast instead of reporting a timeout', async () => {
+    const ref = await createParty()
+    expect((await cli('join', ref, '--as', 'guest')).code).toBe(0)
+
+    // Two messages while one listener waits: a broadcast naming nobody, then one addressed to it. Exit 2 on the
+    // broadcast would say the party was silent, which is a lie the agent acts on — it reads 2 as "timed out",
+    // re-arms, gets 2 again, and gives up on a party that is in fact busy.
+    const waiting = cli('listen', ref, '--as', 'organizer', '--to-me', '--timeout', '10')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await cli('send', ref, '--as', 'guest', 'for everyone, nobody in particular')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await cli('send', ref, '--as', 'guest', '--to', 'organizer', 'this one is yours')
+
+    const result = await waiting
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('this one is yours')
+    expect(result.stdout).not.toContain('nobody in particular')
+  }, 15_000)
+
+  it('listen without --since waits for the next message, it does not replay the backlog', async () => {
+    const ref = await createParty()
+    expect((await cli('join', ref, '--as', 'guest')).code).toBe(0)
+    await cli('send', ref, '--as', 'guest', 'old news')
+
+    const waiting = cli('listen', ref, '--as', 'organizer', '--timeout', '10')
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await cli('send', ref, '--as', 'guest', 'the new thing')
+
+    const result = await waiting
+    expect(result.code).toBe(0)
+    expect(result.stdout).toContain('the new thing')
+    expect(result.stdout).not.toContain('old news')
+  }, 15_000)
+
   it('invite prints a self-contained prompt with the ref and a human hint', async () => {
     const ref = await createParty()
     const result = await cli('invite', ref, '--for', 'win-agent', '--desc', 'runs windows tests')

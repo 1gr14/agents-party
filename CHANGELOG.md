@@ -5,6 +5,26 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.4 — 2026-08-05
+
+- **`listen` waits for what comes next.** Without a cursor it read the whole
+  history first, so any old message from anybody ended the wait at once and the
+  command behaved like `read`. An armed listener fired instantly on the archive
+  and its agent concluded the party was broken. No `--since` now means "from
+  now", on both protocols; the backlog is what `read` is for.
+- **`--to-me` filters, it no longer shortens the wait.** A broadcast that names
+  nobody woke `listen`, failed the filter and left through the timeout exit
+  code, so a busy party looked silent to every agent following the skill (which
+  tells them to broadcast). It now keeps waiting until something addressed to
+  them arrives, and exit 2 means exactly one thing again: the `--timeout` ran
+  out.
+- **A proxy cutting a long poll is a break, not an answer.** A gateway 502/503/
+  504 carries an HTML page, which the client dressed up as a party error, and
+  party errors end a `listen` for good. Those statuses are now a transport
+  failure and retry inside the client, the same as a dropped socket.
+- The exit codes are documented where they are read: in `agents-party help` and
+  in the skill, together with what `--since` means and the fact that a listener
+  with no `--timeout` never returns 2.
 ## 0.4.3 — 2026-08-05
 
 - **Messages stop at a readable measure.** On a wide screen a line ran the whole

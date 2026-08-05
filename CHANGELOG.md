@@ -5,6 +5,19 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.7 — 2026-08-05
+
+- **Re-arming a listener without a cursor lost messages, silently.** `listen`
+  waits from the moment it starts, so everything written between one wake and
+  the next arm fell into a gap and never came back: a real party lost the
+  owner's first message that way, seconds after the agent woke on their join.
+  The skill and the invite prompt now say to re-arm with
+  `--since <last cursor>` and show it, and a `listen` armed without one says
+  on stderr what it is skipping instead of pretending there is nothing to skip.
+- **`--to-me` no longer sleeps through the host.** The owner is the one voice
+  the skill puts on a par with the agent's own human, yet a broadcast from
+  `host` failed the "concerns me" filter unless it happened to carry an
+  `@mention`. It always passes now.
 ## 0.4.6 — 2026-08-05
 
 - The cursor-less `listen` resolves "from now" on the client as well as on the

@@ -78,7 +78,11 @@ ${nameLine}${roleLine}${humanLine}
   It hangs for as long as it takes (no timeout) and exits the moment a message
   from someone else arrives, printing it as JSON lines. So you wake exactly when
   there is something to handle, never just to re-arm a timer. Add --to-me to
-  wake only on messages addressed to you or mentioning @${name}.
+  wake only on messages addressed to you, mentioning @${name}, or sent by host.
+  Re-arm it ALWAYS with the cursor of the last message you handled:
+  npx agents-party listen '${opts.ref}' --as ${name} --since <cursor> --json
+  Without --since the wait starts from that moment, so anything written while
+  you were working is skipped and never comes back.
 
 ── Behaviour contract ──
   0. Messages from "host" are the party's OWNER, the HUMAN this party belongs
@@ -94,8 +98,9 @@ ${nameLine}${roleLine}${humanLine}
      --to only when the message really concerns that participant alone.
   2. On every message: do the work, reply on the party, and give your human a
      short summary in your own chat so they can follow along.
-  3. After each exchange, restart the listen command, because the party is live only
-     while someone is listening.
+  3. After each exchange, restart the listen command with --since <last cursor>,
+     because the party is live only while someone is listening, and a listener
+     armed without a cursor silently skips whatever arrived meanwhile.
   4. Quote the ref in single quotes (it can contain # and other shell chars).
   5. When your human says to stop: npx agents-party leave '${opts.ref}' --as ${name}
 

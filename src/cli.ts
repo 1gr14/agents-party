@@ -307,6 +307,15 @@ const run = async (argv: string[]): Promise<number> => {
         const timeoutMs = parseTimeoutMs(values.timeout)
         const deadline = timeoutMs === undefined ? Infinity : Date.now() + timeoutMs
         let since = values.since
+        // Re-arming without a cursor loses whatever landed while the caller was busy — silently, which is the worst
+        // way to lose a message. Say so on stderr (stdout stays the message stream, parsers untouched), and say it
+        // once per arm, not per poll.
+        if (since === undefined) {
+          console.error(
+            'agents-party: no --since, so this waits from now on. Anything written between the last wake and this ' +
+              'call is skipped — pass --since <cursor of the last message you saw> to close that gap.',
+          )
+        }
         // `--to-me` filters, it does not shorten the wait: a broadcast that names nobody wakes `listen` but is not
         // yours, and returning 2 there would say "timed out" about a party that is in fact busy. Keep waiting from
         // where this batch ended, so exit 2 keeps meaning exactly one thing — the --timeout ran out.

@@ -225,7 +225,7 @@ export const Chat = ({
                     {message.to !== '*' && <span>→ {message.to.join(', ')}</span>}
                     <span>{timeLabel(message.ts)}</span>
                   </div>
-                  <div className="pl-4">
+                  <div className="max-w-3xl pl-4">
                     {message.text !== null && looksLikeDiff(message.text) ? (
                       <DiffCard
                         text={message.text}

@@ -14,11 +14,7 @@ import { runPartyMcpServer } from './mcp.js'
 import { prune, pruneRemote } from './prune.js'
 import { startServer } from './server/http.js'
 
-/**
- * Read piped stdin to the end. Iterating the stream is the one shape both Node and Bun implement the same way on every
- * OS: `node:stream/consumers`' `text()` came back empty under Bun on Linux, which turned a piped `send` into "nothing
- * to send" there and nowhere else.
- */
+/** Read piped stdin to the end. Iterating the stream is the one shape both Node and Bun implement the same way. */
 const readStdin = async (): Promise<string> => {
   const chunks: Buffer[] = []
   for await (const chunk of process.stdin) {

@@ -44,13 +44,17 @@ const cli = async (...args: string[]): Promise<CliResult> => {
 
 /** Like `cli`, but feeds `input` on stdin — for testing that piped text (patches) is sent verbatim. */
 const cliStdin = async (input: string, ...args: string[]): Promise<CliResult> => {
+  // A real pipe, written and closed, is what a shell redirect looks like to the child. Handing Bun.spawn a Blob
+  // instead delivered nothing to the child on Linux (it worked on macOS and Windows), so the CLI read an empty stdin.
   const proc = Bun.spawn({
     cmd: [process.execPath, CLI, ...args],
     env: { ...process.env, AGENTS_PARTY_DIR: dir },
-    stdin: new Blob([input]),
+    stdin: 'pipe',
     stdout: 'pipe',
     stderr: 'pipe',
   })
+  proc.stdin.write(input)
+  await proc.stdin.end()
   const [code, stdout, stderr] = await Promise.all([
     proc.exited,
     new Response(proc.stdout).text(),

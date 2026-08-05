@@ -8,12 +8,15 @@ work; `bun run release` promotes that section to the new version.
 ## 0.4.1 — 2026-08-05
 
 - **0.4.0 never reached npm.** Its tag was pushed, but the release run failed
-  before publishing: piping a patch into `send` came back as "nothing to send"
-  on Linux. `node:stream/consumers`' `text()` answers empty for `process.stdin`
-  under Bun there, so the CLI read no stdin at all, and only that platform was
-  affected: macOS and Windows both passed. Reading the stream by iteration is
-  the shape every runtime implements alike. 0.4.1 is the first published build
-  of everything listed under 0.4.0.
+  before publishing, and on a test rather than on the product: the CLI test fed
+  a piped patch to the child process as a `Blob`, which Bun on Linux does not
+  deliver as the child's stdin, so `send` read nothing there and refused with
+  "nothing to send". macOS and Windows both passed, which is why it only showed
+  up in CI. The test now writes into a real pipe and closes it, the way a shell
+  redirect looks to the child, and it asserts the CLI's stderr before its exit
+  code so a failure says what went wrong. `send` also reads stdin by iterating
+  the stream now, the one shape every runtime implements alike. 0.4.2 is the
+  first published build of everything listed under 0.4.0.
 
 ## 0.4.0 — 2026-08-05
 

@@ -5,6 +5,11 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.6 — 2026-08-05
+
+- The cursor-less `listen` resolves "from now" on the client as well as on the
+  server, so the promise holds against an older server that would still replay
+  its history.
 ## 0.4.5 — 2026-08-05
 
 ## 0.4.4 — 2026-08-05

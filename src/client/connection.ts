@@ -242,7 +242,16 @@ const connectRemote = (opts: {
     },
     listen: async (forName, listenOpts = {}) => {
       const deadline = listenOpts.timeoutMs === undefined ? Infinity : Date.now() + listenOpts.timeoutMs
-      let since = listenOpts.since
+      // "From now" is resolved here as well as on the server, so the promise holds against an older server too: one
+      // that still replays its whole history for a cursor-less listen would end this wait on the archive.
+      let since =
+        listenOpts.since ??
+        (
+          await remoteRequest<{ messages: Message[] }>(
+            baseUrl,
+            `${api}/messages?${new URLSearchParams({ for: forName, limit: '1' }).toString()}`,
+          )
+        ).messages.at(-1)?.cursor
       while (Date.now() < deadline) {
         const started = Date.now()
         const secLeft = Math.ceil((deadline - started) / 1000)

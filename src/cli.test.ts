@@ -108,6 +108,8 @@ describe('cli', () => {
     const ref = await createParty()
     const patch = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1,2 +1,2 @@\n-old\n+new\n line2\n'
     const sent = await cliStdin(patch, 'send', ref, '--as', 'organizer')
+    // stderr first: a bare exit-code assertion tells you nothing about WHY the CLI refused
+    expect(sent.stderr).toBe('')
     expect(sent.code).toBe(0)
 
     const read = await cliStdin('', 'read', ref, '--as', 'organizer', '--json')

@@ -4,7 +4,8 @@ import path from 'node:path'
 
 /**
  * Where agents-party keeps its data on a machine (CLI, local web, self-hosted server alike): <dir>/registry.sqlite —
- * the registry: one row of metadata per party (see core/types.ts PartyMeta)  <dir>/parties/<id>.sqlite  — one file per party: messages + participants
+ * the registry: one row of metadata per party (see core/types.ts PartyMeta) <dir>/parties/<id>.sqlite — one file per
+ * party: messages + participants
  *
  * `<dir>` is `~/.agents-party`, overridable via AGENTS_PARTY_DIR (tests, self-hosted volumes).
  */

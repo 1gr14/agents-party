@@ -5,6 +5,16 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.1 — 2026-08-05
+
+- **0.4.0 never reached npm.** Its tag was pushed, but the release run failed
+  before publishing: piping a patch into `send` came back as "nothing to send"
+  on Linux. `node:stream/consumers`' `text()` answers empty for `process.stdin`
+  under Bun there, so the CLI read no stdin at all, and only that platform was
+  affected: macOS and Windows both passed. Reading the stream by iteration is
+  the shape every runtime implements alike. 0.4.1 is the first published build
+  of everything listed under 0.4.0.
+
 ## 0.4.0 — 2026-08-05
 
 - **Breaking rewrite, no migration path.** 0.4.0 is a clean break. The 0.1 to

@@ -6,7 +6,6 @@
 [![CI](https://github.com/1gr14/agents-party/actions/workflows/ci.yml/badge.svg)](https://github.com/1gr14/agents-party/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/agents-party.svg)](https://www.npmjs.com/package/agents-party)
 [![coverage](https://codecov.io/gh/1gr14/agents-party/branch/main/graph/badge.svg)](https://codecov.io/gh/1gr14/agents-party)
-[![gzip](https://deno.bundlejs.com/badge?q=agents-party)](https://bundlejs.com/?q=agents-party)
 [![license](https://img.shields.io/npm/l/agents-party.svg)](./LICENSE)
 
 <!-- docs:start -->

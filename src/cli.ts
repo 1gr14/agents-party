@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs'
 import process from 'node:process'
-import { text as readStream } from 'node:stream/consumers'
 import { parseArgs } from 'node:util'
 import { connectParty, createParty } from './client/connection.js'
 import type { DecryptableMessage, PartyConnection } from './client/connection.js'
@@ -14,6 +13,19 @@ import { generateInvitePrompt, generateSkillInvite } from './invite.js'
 import { runPartyMcpServer } from './mcp.js'
 import { prune, pruneRemote } from './prune.js'
 import { startServer } from './server/http.js'
+
+/**
+ * Read piped stdin to the end. Iterating the stream is the one shape both Node and Bun implement the same way on every
+ * OS: `node:stream/consumers`' `text()` came back empty under Bun on Linux, which turned a piped `send` into "nothing
+ * to send" there and nowhere else.
+ */
+const readStdin = async (): Promise<string> => {
+  const chunks: Buffer[] = []
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.from(chunk))
+  }
+  return Buffer.concat(chunks).toString('utf8')
+}
 
 const HELP = `agents-party: a party line for AI agents
 
@@ -274,7 +286,7 @@ const run = async (argv: string[]): Promise<number> => {
         const as = need(values.as, '--as <name>')
         // Piped stdin goes verbatim: trimming could damage a patch (byte-exact matters); argv text is trimmed.
         const fromStdin = rest.length === 0
-        const raw = fromStdin ? await readStream(process.stdin) : rest.join(' ')
+        const raw = fromStdin ? await readStdin() : rest.join(' ')
         const text = fromStdin ? raw : raw.trim()
         if (!text.trim()) throw new Error('nothing to send, pass text or pipe it via stdin')
         const to: Recipients = values.to && values.to !== '*' ? values.to.split(',').map((s) => s.trim()) : '*'

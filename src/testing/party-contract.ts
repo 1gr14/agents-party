@@ -78,10 +78,10 @@ export const describePartyContract = (label: string, makeParty: () => Promise<Pa
       const party = await makeParty()
       const c = await party.connect()
       await c.join('a')
-      const sent = await c.send('a', 'привет, вечеринка')
-      expect(sent.text).toBe('привет, вечеринка')
+      const sent = await c.send('a', 'héllo, 世界, 🎉')
+      expect(sent.text).toBe('héllo, 世界, 🎉')
       const read = (await c.read({ for: 'a' })).filter((m) => m.kind === 'message')
-      expect(read).toMatchObject([{ from: 'a', to: '*', text: 'привет, вечеринка' }])
+      expect(read).toMatchObject([{ from: 'a', to: '*', text: 'héllo, 世界, 🎉' }])
       await c.close()
     })
 
@@ -166,6 +166,23 @@ export const describePartyContract = (label: string, makeParty: () => Promise<Pa
       await speaker.send('mouth', 'the new thing')
       const messages = await wait
       expect(messages.filter((m) => m.kind === 'message').map((m) => m.text)).toEqual(['the new thing'])
+      await listener.close()
+      await speaker.close()
+    })
+
+    it('answers a join and the message behind it in ONE wake', async () => {
+      const party = await makeParty()
+      const listener = await party.connect()
+      const speaker = await party.connect()
+      await listener.join('ear')
+      const wait = listener.listen('ear', { timeoutMs: 10_000 })
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      // One human action, two rows: someone opens the party and speaks. Waking the room on the join alone costs
+      // every listening agent a whole model turn to learn nothing.
+      await speaker.join('mouth')
+      await speaker.send('mouth', 'hello, I just got here')
+      const messages = await wait
+      expect(messages.map((m) => m.kind)).toEqual(['join', 'message'])
       await listener.close()
       await speaker.close()
     })

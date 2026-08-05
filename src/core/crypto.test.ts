@@ -13,9 +13,9 @@ import {
 describe('message encryption (party key)', () => {
   it('round-trips text', async () => {
     const key = generatePartyKey()
-    const blob = await encryptText(key, 'привет, вечеринка')
-    expect(blob).not.toContain('привет')
-    expect(await decryptText(key, blob)).toBe('привет, вечеринка')
+    const blob = await encryptText(key, 'héllo, 世界, 🎉')
+    expect(blob).not.toContain('héllo')
+    expect(await decryptText(key, blob)).toBe('héllo, 世界, 🎉')
   })
 
   it('returns null on a wrong key or tampered blob (GCM doubles as the key check)', async () => {
@@ -108,6 +108,8 @@ describe('fixed vectors — pin the wire formats for other implementations (the 
     expect(await unseal(PRIVATE_KEY, SEALED)).toBe(PARTY_KEY)
   })
 
+  // The plaintext is what this exact blob has always decrypted to. It is a historical artefact, not a sample string:
+  // rewriting it to match house style would mean regenerating the blob, which is the one thing this test forbids.
   it('a historical message blob decrypts with the party key', async () => {
     expect(await decryptText(PARTY_KEY, MESSAGE_BLOB)).toBe('привет, вечеринка')
   })

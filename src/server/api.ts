@@ -55,6 +55,12 @@ export interface PartyApiContext {
    * standalone server does (local-protocol clients write the party files directly, next to it).
    */
   listenFallbackMs?: number
+  /**
+   * How long a woken listen waits for the burst to finish before answering (default 400, `0` disables). A join and the
+   * message that follows it are one human action but two rows, and answering the first alone wakes every listening
+   * agent twice, at the price of a model turn each. See the listen branch.
+   */
+  listenSettleMs?: number
 }
 
 const json = (status: number, body: unknown): Response =>
@@ -117,6 +123,8 @@ const publicMeta = (entry: RegistryEntry, owner: boolean): Record<string, unknow
 // writes this process cannot see (another process over the same files, another instance) — where every write is an
 // API request, it is pure insurance and can be lazy.
 const LISTEN_FALLBACK_MS = 5000
+/** A woken listen waits this long for the rest of the burst (a join and its message) before answering. */
+const LISTEN_SETTLE_MS = 400
 const LISTEN_DEFAULT_SEC = 25
 const LISTEN_MAX_SEC = 55
 
@@ -411,7 +419,21 @@ export const createPartyApi = (ctx: PartyApiContext): PartyApi => {
           }
           throw error
         }
-        if (messages.some((m) => m.from !== viewer)) return json(200, { messages })
+        if (messages.some((m) => m.from !== viewer)) {
+          // Let a burst settle before answering. Things arrive in pairs here: a participant joins and speaks in the
+          // same breath (the web owner does it in under half a second), and answering the join alone wakes every
+          // listener twice for one human action — each wake costing a whole model turn. One extra beat of latency
+          // buys them one wake and the full picture.
+          const settleMs = ctx.listenSettleMs ?? LISTEN_SETTLE_MS
+          if (settleMs > 0 && Date.now() + settleMs < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, settleMs))
+            const settled = await store.read({ for: viewer, ...(since === undefined ? {} : { since }) })
+            if (settled.length > messages.length) {
+              return json(200, { messages: settled })
+            }
+          }
+          return json(200, { messages })
+        }
         await woke
       }
       return json(200, { messages: [] as Message[] })

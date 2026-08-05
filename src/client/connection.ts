@@ -65,6 +65,9 @@ const requireKey = async (resolve: KeyResolver, partyId: string): Promise<string
   return key
 }
 
+/** A woken listen waits this long for the rest of a burst before answering — mirrors the server (server/api.ts). */
+const LISTEN_SETTLE_MS = 400
+
 // ── Local protocol ────────────────────────────────────────────────────────────
 
 const connectLocal = async (partyId: string, dir?: string): Promise<PartyConnection> => {
@@ -116,7 +119,15 @@ const connectLocal = async (partyId: string, dir?: string): Promise<PartyConnect
       while (Date.now() < deadline) {
         const messages = await store.read({ for: forName, ...(since === undefined ? {} : { since }) })
         const foreign = messages.filter((m) => m.from !== forName)
-        if (foreign.length > 0) return decryptAll(foreign, await resolveKey(partyId))
+        if (foreign.length > 0) {
+          // Let the burst settle, exactly as the server does: a participant joining and speaking is one action and
+          // two rows, and answering the join alone wakes the reader twice for it.
+          await new Promise((resolve) => setTimeout(resolve, LISTEN_SETTLE_MS))
+          const settled = (await store.read({ for: forName, ...(since === undefined ? {} : { since }) })).filter(
+            (m) => m.from !== forName,
+          )
+          return decryptAll(settled.length > foreign.length ? settled : foreign, await resolveKey(partyId))
+        }
         if (messages.length > 0) since = messages.at(-1)?.cursor
         await new Promise((resolve) => setTimeout(resolve, 300))
       }

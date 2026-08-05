@@ -11,7 +11,9 @@ const expectSkill = (file: string): void => {
   // The Agent Skills frontmatter is what makes the file discoverable — every target keeps it.
   expect(content.startsWith('---')).toBe(true)
   expect(content).toContain('name: party')
-  expect(content).toContain('agents-party listen')
+  // Pinned on purpose: a bare `npx agents-party` can be served from the npx cache and silently run an old version.
+  expect(content).toContain('agents-party@latest listen')
+  expect(content).not.toContain('npx agents-party ')
 }
 
 describe('install', () => {

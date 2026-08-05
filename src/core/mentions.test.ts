@@ -28,9 +28,10 @@ describe('concernsParticipant', () => {
     expect(concernsParticipant(broadcast('other'), 'me')).toBe(false)
   })
 
-  // The skill puts the host's word on a par with the agent's own human. A filter meaning "what concerns me" that
-  // sleeps through the owner talking to the room contradicts that, and it is how a real party lost a real message.
-  it('always takes the host, mention or no mention', () => {
-    expect(concernsParticipant(broadcast('host', 'everyone, status?'), 'me')).toBe(true)
+  // Not even the host gets an exception: the flag means "only what is addressed to me", and a caller who asked for
+  // that gets it. Whether to wear the filter at all is the caller's call, and the skill says to leave it off.
+  it('treats a host broadcast like any other broadcast', () => {
+    expect(concernsParticipant(broadcast('host', 'everyone, status?'), 'me')).toBe(false)
+    expect(concernsParticipant(broadcast('host', '@me status?'), 'me')).toBe(true)
   })
 })

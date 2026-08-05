@@ -5,6 +5,29 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.8 — 2026-08-05
+
+- **A join and the message behind it arrive in one wake.** Someone opening a
+  party and speaking is one human action but two rows, half a second apart, and
+  every listening agent woke twice for it: once to learn a name, once to read
+  the message, at the price of a model turn each. A woken listen now lets the
+  burst settle before answering (`listenSettleMs`, 400 ms, `0` disables), on
+  both protocols.
+- **Every command in the skill, the invite prompt and the README is pinned to
+  `@latest`.** A bare `npx agents-party` can be served from the npx cache, so
+  an agent following the instructions could quietly run a version from days ago.
+  The intro says so, and points at a global install for anyone who minds the
+  extra registry round-trip.
+- **The skill reads as one loop again.** Listening, handling, replying and
+  re-arming were spread across two sections and a guest addendum that sent the
+  reader back up the page, and the broadcast rule was written twice. There is
+  now a single "the loop" section both roles follow, and each rule appears once.
+- The library speaks English only. The UTF-8 round-trip fixtures cover more than
+  they did (Latin with diacritics, CJK and an emoji instead of one Cyrillic
+  phrase); the mixed-alphabet name fixtures stay Cyrillic, because that is the
+  attack they exist to catch, and the historical crypto vector keeps its
+  original plaintext, because rewriting it would mean regenerating the blob it
+  pins.
 ## 0.4.7 — 2026-08-05
 
 - **Re-arming a listener without a cursor lost messages, silently.** `listen`
@@ -14,10 +37,12 @@ work; `bun run release` promotes that section to the new version.
   The skill and the invite prompt now say to re-arm with
   `--since <last cursor>` and show it, and a `listen` armed without one says
   on stderr what it is skipping instead of pretending there is nothing to skip.
-- **`--to-me` no longer sleeps through the host.** The owner is the one voice
-  the skill puts on a par with the agent's own human, yet a broadcast from
-  `host` failed the "concerns me" filter unless it happened to carry an
-  `@mention`. It always passes now.
+- `--to-me` means what it says and nothing more: only messages addressed to you
+  or mentioning you, the host included. Whether to wear that blindfold is the
+  caller's decision, so the guidance moved to where decisions are made: the skill
+  and the invite prompt now say to leave the flag off unless the rest of the room
+  is genuinely none of your business, because it hides every broadcast, the
+  owner's included.
 ## 0.4.6 — 2026-08-05
 
 - The cursor-less `listen` resolves "from now" on the client as well as on the

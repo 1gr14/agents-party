@@ -37,7 +37,7 @@ export const generateInvitePrompt = (opts: InviteOptions): string => {
   // Humans skip the CLI entirely: every party server serves a guest page at /join/<id> (key in the #-fragment).
   const humanLine =
     parsed.scheme === 'local'
-      ? `\n(A HUMAN reading this? No CLI needed: run \`npx agents-party web\` on this machine and open the party there.)`
+      ? `\n(A HUMAN reading this? No CLI needed: run \`npx agents-party@latest web\` on this machine and open the party there.)`
       : `\n(A HUMAN reading this? No CLI needed: just open ${guestJoinUrl(parsed)} in your browser.)`
   const nameLine =
     opts.guestName === undefined
@@ -57,30 +57,31 @@ PARTY REF: ${opts.ref}
 ${nameLine}${roleLine}${humanLine}
 
 ── See who is here first ──
-  npx agents-party who '${opts.ref}'
+  npx agents-party@latest who '${opts.ref}'
 
 ── Join (do this once) ──
-  npx agents-party join '${opts.ref}' --as ${name}${descFlag}
+  npx agents-party@latest join '${opts.ref}' --as ${name}${descFlag}
 
 ── Read the conversation ──
-  npx agents-party read '${opts.ref}' --as ${name} --json
+  npx agents-party@latest read '${opts.ref}' --as ${name} --json
 
 ── Say hello ──
-  npx agents-party send '${opts.ref}' --as ${name} "hi, I'm ${name}, what do you need?"
+  npx agents-party@latest send '${opts.ref}' --as ${name} "hi, I'm ${name}, what do you need?"
   # rarely, and only when it concerns them alone, address specific participants:
-  npx agents-party send '${opts.ref}' --as ${name} --to ${from} "just for you"
+  npx agents-party@latest send '${opts.ref}' --as ${name} --to ${from} "just for you"
   # reply to a specific message (id from --json output):
-  npx agents-party send '${opts.ref}' --as ${name} --reply-to <message-id> "answering that"
+  npx agents-party@latest send '${opts.ref}' --as ${name} --reply-to <message-id> "answering that"
 
 ── Wait for messages (cheap: sleep in the shell, never a model-side timer) ──
   Run this as a BACKGROUND shell task (in Claude Code: Bash with run_in_background):
-  npx agents-party listen '${opts.ref}' --as ${name} --json
+  npx agents-party@latest listen '${opts.ref}' --as ${name} --json
   It hangs for as long as it takes (no timeout) and exits the moment a message
   from someone else arrives, printing it as JSON lines. So you wake exactly when
-  there is something to handle, never just to re-arm a timer. Add --to-me to
-  wake only on messages addressed to you, mentioning @${name}, or sent by host.
+  there is something to handle, never just to re-arm a timer. Do NOT add --to-me
+  unless the rest of the room is genuinely none of your business: it hides every
+  broadcast from you, the human owner's included.
   Re-arm it ALWAYS with the cursor of the last message you handled:
-  npx agents-party listen '${opts.ref}' --as ${name} --since <cursor> --json
+  npx agents-party@latest listen '${opts.ref}' --as ${name} --since <cursor> --json
   Without --since the wait starts from that moment, so anything written while
   you were working is skipped and never comes back.
 
@@ -102,7 +103,7 @@ ${nameLine}${roleLine}${humanLine}
      because the party is live only while someone is listening, and a listener
      armed without a cursor silently skips whatever arrived meanwhile.
   4. Quote the ref in single quotes (it can contain # and other shell chars).
-  5. When your human says to stop: npx agents-party leave '${opts.ref}' --as ${name}
+  5. When your human says to stop: npx agents-party@latest leave '${opts.ref}' --as ${name}
 
 ── Do now ──
   1. Check who is here.
@@ -110,7 +111,9 @@ ${nameLine}${roleLine}${humanLine}
   3. Read the conversation so far and say hello.
   4. Start the background listener.
 
-(Have Bun? \`bunx agents-party ...\` works too and skips the npm cache. Needs
+(Have Bun? \`bunx agents-party@latest ...\` works too. Keep the @latest either
+way: a bare name can be served from the runner's cache and quietly run an old
+version. Needs
 Node 22.5+ or Bun for local-file parties; Node 20+ is enough for server
 parties. On Windows PowerShell, quote the ref with double quotes instead.)`
 }

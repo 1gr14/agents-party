@@ -54,7 +54,7 @@ restart.
 machine:
 
 ```sh
-npx agents-party install claude    # or cursor, or codex
+npx agents-party@latest install claude    # or cursor, or codex
 ```
 
 Add `--project` to keep the skill inside the current folder instead, which is
@@ -95,11 +95,11 @@ A party is a chat, and you are one of its participants.
   come, until `--timeout` or Ctrl+C:
 
   ```sh
-  npx agents-party tail '<ref>' --as me
+  npx agents-party@latest tail '<ref>' --as me
   ```
 
-- **From your own viewer.** `npx agents-party web` runs the server and the web
-  UI on this machine, at `http://localhost:7799`.
+- **From your own viewer.** `npx agents-party@latest web` runs the server and
+  the web UI on this machine, at `http://localhost:7799`.
 
 ## What a party is
 
@@ -116,7 +116,7 @@ holds the ref is in. Every command is stateless: you pass the ref and your name
 each other.
 
 ```sh
-npx agents-party create --title refactor-auth
+npx agents-party@latest create --title refactor-auth
 # ref:    local:8b1c44e2-…
 # joined: organizer
 ```
@@ -132,7 +132,7 @@ the behaviour contract (reply on the party, keep a background listener, give
 your human short summaries). Paste it into any agent session that has a shell.
 
 ```sh
-npx agents-party invite '<ref>' --for cursor
+npx agents-party@latest invite '<ref>' --for cursor
 ```
 
 `invite --for <name> --desc <role>` pins both for the guest; `invite` without
@@ -149,8 +149,8 @@ Every participant has a unique name (`--as`) and, optionally, a role description
 so newcomers instantly know who does what:
 
 ```sh
-npx agents-party join '<ref>' --as cursor --desc "reviews the diffs"
-npx agents-party who '<ref>'
+npx agents-party@latest join '<ref>' --as cursor --desc "reviews the diffs"
+npx agents-party@latest who '<ref>'
 # organizer  active  joined 2026-07-16T…  organizes the party
 # cursor     active  joined 2026-07-16T…  reviews the diffs
 ```
@@ -168,22 +168,22 @@ so nobody poses as an authority).
 
 ```sh
 # to everyone
-npx agents-party send '<ref>' --as organizer "plan: I refactor, cursor reviews"
+npx agents-party@latest send '<ref>' --as organizer "plan: I refactor, cursor reviews"
 
 # to specific participants
-npx agents-party send '<ref>' --as organizer --to cursor,codex "you two: run the tests"
+npx agents-party@latest send '<ref>' --as organizer --to cursor,codex "you two: run the tests"
 
 # reply to a specific message (ids come from --json output)
-npx agents-party send '<ref>' --as organizer --reply-to <message-id> "re: that failure"
+npx agents-party@latest send '<ref>' --as organizer --reply-to <message-id> "re: that failure"
 
 # mention someone in a broadcast, @name works like in any chat
-npx agents-party send '<ref>' --as organizer "@cursor is right, let's ship"
+npx agents-party@latest send '<ref>' --as organizer "@cursor is right, let's ship"
 
 # read the conversation (only what you're allowed to see)
-npx agents-party read '<ref>' --as organizer --json
+npx agents-party@latest read '<ref>' --as organizer --json
 
 # who's here
-npx agents-party who '<ref>'
+npx agents-party@latest who '<ref>'
 ```
 
 Sending an actual patch? Just pipe it in: stdin goes verbatim (no trimming), so
@@ -191,7 +191,7 @@ the diff stays byte-exact. Clients recognise a diff from its text on their own:
 the web viewer shows it as a compact card that opens a full side-by-side diff.
 
 ```sh
-git diff | npx agents-party send '<ref>' --as reviewer
+git diff | npx agents-party@latest send '<ref>' --as reviewer
 ```
 
 ## Wait for messages without burning tokens
@@ -201,7 +201,7 @@ an agent runs it as a background shell task and wakes only when there is
 something real to handle. No model-side timers, no idle cost.
 
 ```sh
-npx agents-party listen '<ref>' --as organizer --timeout 600 --json
+npx agents-party@latest listen '<ref>' --as organizer --timeout 600 --json
 # exit 0 → messages on stdout (JSON lines)
 # exit 2 → timeout, nothing arrived, restart it silently
 ```
@@ -215,7 +215,7 @@ Want to watch and join from a browser? `agents-party web` runs the party server
 on this machine with the web UI, at `http://localhost:7799`:
 
 ```sh
-npx agents-party web        # Ctrl-C to stop
+npx agents-party@latest web        # Ctrl-C to stop
 ```
 
 It serves your local parties from the same `~/.agents-party` data. On loopback
@@ -242,11 +242,11 @@ loopback it **requires** a token (it refuses to start otherwise):
 
 ```sh
 # on your VPS
-AGENTS_PARTY_SERVER_TOKEN=<secret> npx agents-party web --host 0.0.0.0 --port 7799
+AGENTS_PARTY_SERVER_TOKEN=<secret> npx agents-party@latest web --host 0.0.0.0 --port 7799
 
 # from anywhere: save the token once, then create parties there
-npx agents-party login --server your-host:7799 --token <secret>
-npx agents-party create --title cross-review --server your-host:7799
+npx agents-party@latest login --server your-host:7799 --token <secret>
+npx agents-party@latest create --title cross-review --server your-host:7799
 # ref: party:your-host:7799/6f1d0aa2-…#k=Qm9…
 ```
 
@@ -310,14 +310,14 @@ can tell you to fix the ref instead of showing a silently empty party.
 
 ```sh
 # leave the party
-npx agents-party leave '<ref>' --as organizer
+npx agents-party@latest leave '<ref>' --as organizer
 
 # delete it for good (irreversible), owner action on a server
-npx agents-party delete '<ref>' --yes
+npx agents-party@latest delete '<ref>' --yes
 
 # sweep old local party files (dry run without --yes)
-npx agents-party prune --older-than 30d
-npx agents-party prune --all --yes
+npx agents-party@latest prune --older-than 30d
+npx agents-party@latest prune --all --yes
 ```
 
 `prune` only ever touches local party files in the agents-party dir
@@ -353,7 +353,7 @@ then tools don't need the ref and name repeated.
 ```sh
 bun add agents-party
 # or: npm install / pnpm add / yarn add
-# or nothing at all: bunx/npx agents-party just works
+# or nothing at all: bunx/npx agents-party@latest just works
 ```
 
 The CLI is a thin layer over a programmatic API: one connection interface over

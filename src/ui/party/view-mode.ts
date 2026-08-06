@@ -40,5 +40,7 @@ export const isVisibleInView = (message: ViewMessage, mode: ChatViewMode, me: st
   if (message.kind !== 'message') {
     return false
   }
-  return message.from === me || concernsParticipant({ to: message.to, from: message.from, text: message.text ?? '' }, me)
+  return (
+    message.from === me || concernsParticipant({ to: message.to, from: message.from, text: message.text ?? '' }, me)
+  )
 }

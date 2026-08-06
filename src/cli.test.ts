@@ -207,7 +207,10 @@ describe('cli', () => {
     await cli('join', ref, '--as', 'a')
     for (const text of ['one', 'two', 'three']) await cli('send', ref, '--as', 'a', text)
     const latest = await cli('read', ref, '--as', 'a', '--limit', '2', '--json')
-    const tail = latest.stdout.trim().split('\n').map((line) => JSON.parse(line) as { text: string; cursor: string })
+    const tail = latest.stdout
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as { text: string; cursor: string })
     expect(tail.map((message) => message.text)).toEqual(['two', 'three'])
     const older = await cli('read', ref, '--as', 'a', '--before', tail[0]!.cursor, '--limit', '1', '--json')
     expect((JSON.parse(older.stdout.trim()) as { text: string }).text).toBe('one')

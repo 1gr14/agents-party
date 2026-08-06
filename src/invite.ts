@@ -15,8 +15,8 @@ export interface InviteOptions {
 
 /**
  * Invites are not an entity, just text with the ref baked in (the ref carries the party id and the encryption key,
- * which is all the access there is). Two forms: a one-liner for guests with the skill installed, and a short prompt
- * for everyone else.
+ * which is all the access there is). Two forms: a one-liner for guests with the skill installed, and a short prompt for
+ * everyone else.
  */
 export const generateSkillInvite = (opts: InviteOptions): string => {
   const name = opts.guestName ?? '<pick-a-unique-name>'

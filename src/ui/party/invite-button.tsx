@@ -5,9 +5,11 @@ import { Button } from '../components/button.js'
 
 /**
  * The prompt the owner hands to another agent to bring it into the party — the same text the CLI's `invite` prints, so
- * a guest meets one wording whichever way it was invited. Short by design: it carries the full `ref` (server + party id
- * + key) and gets the guest to `join`, and `join` prints the working contract. Humans skip the CLI: the prompt also
- * carries the browser guest link (/join/<id> with the key in the fragment).
+ * a guest meets one wording whichever way it was invited. Short by design: it carries the full `ref` (server + party
+ * id
+ *
+ * - key) and gets the guest to `join`, and `join` prints the working contract. Humans skip the CLI: the prompt also
+ *   carries the browser guest link (/join/<id> with the key in the fragment).
  */
 export const invitePrompt = (ref: string): string => generateInvitePrompt({ ref })
 

@@ -64,8 +64,8 @@ export interface ChatProps {
   composerDisabled?: boolean
   recipients: RecipientsState
   /**
-   * The viewer's own participant name — drives listen/send addressing (not shown as a marker) and answers "is this
-   * for me?" for the view filter in the header. Defaults to `host`.
+   * The viewer's own participant name — drives listen/send addressing (not shown as a marker) and answers "is this for
+   * me?" for the view filter in the header. Defaults to `host`.
    */
   currentName?: string
   sidebarClassName?: string

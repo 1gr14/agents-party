@@ -5,6 +5,11 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- The participant tooltip is no longer painted over by the header's own action
+  buttons. `translate-y-px` on a name chip makes it a stacking context, so the
+  tooltip's z-index only ever competed inside that chip — the chip itself sat
+  among the auto-z elements and lost to anything later in the header.
+
 ## 0.5.0 — 2026-08-06
 
 - **Click a name to address it.** In the header and on any message, a

@@ -245,7 +245,11 @@ export const Chat = ({
                     // a tooltip on HOVER only. Not on focus or tap: a tooltip opened by a click has to be dismissed by
                     // another click somewhere harmless, and two of them can end up open at once.
                     // Optical nudge (translate-y-px): serif title + mono xs sit on different visual centers.
-                    <span key={participant.name} className="group relative translate-y-px">
+                    // `z-30` is not decoration: `translate-y-px` makes this span a stacking context, so the tooltip's
+                    // own z-index only ever competes INSIDE it. Without a z-index here the whole chip sits among the
+                    // positioned auto-z elements and loses to whatever comes later in the header — the action buttons
+                    // painted straight over the tooltip.
+                    <span key={participant.name} className="group relative z-30 translate-y-px">
                       {addressable ? (
                         <button
                           type="button"

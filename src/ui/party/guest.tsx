@@ -106,6 +106,8 @@ export const GuestParty = ({ partyId, crypto }: { partyId: string; crypto: Guest
   const [selected, setSelected] = useState<string[]>([])
   const [hasOlder, setHasOlder] = useState(false)
   const [loadingOlder, setLoadingOlder] = useState(false)
+  // The first page is in flight: the chat shows a spinner instead of claiming the party is empty.
+  const [entering, setEntering] = useState(false)
 
   const keyRef = useRef<string | null>(null)
   const cursorRef = useRef<string | null>(null) // newest seen — the long-poll `since`
@@ -179,17 +181,23 @@ export const GuestParty = ({ partyId, crypto }: { partyId: string; crypto: Guest
   const enterChat = useCallback(
     async (as: string) => {
       setName(as)
-      await refreshParticipants()
-      const { messages: raw } = (await api(
-        `/api/parties/${partyId}/messages?limit=${PAGE}&for=${encodeURIComponent(as)}`,
-      )) as {
-        messages: Message[]
+      setEntering(true)
+      try {
+        await refreshParticipants()
+        const { messages: raw } = (await api(
+          `/api/parties/${partyId}/messages?limit=${PAGE}&for=${encodeURIComponent(as)}`,
+        )) as {
+          messages: Message[]
+        }
+        oldestRef.current = raw[0]?.cursor ?? null
+        cursorRef.current = raw.at(-1)?.cursor ?? null
+        setHasOlder(raw.length >= PAGE)
+        setMessages(await decodeToChat(raw))
+        listenLoop(as)
+      } finally {
+        // Even on a failed fetch the spinner has to stop: an error state is honest, a spinner forever is not.
+        setEntering(false)
       }
-      oldestRef.current = raw[0]?.cursor ?? null
-      cursorRef.current = raw.at(-1)?.cursor ?? null
-      setHasOlder(raw.length >= PAGE)
-      setMessages(await decodeToChat(raw))
-      listenLoop(as)
     },
     [partyId, refreshParticipants, decodeToChat, listenLoop],
   )
@@ -345,6 +353,7 @@ export const GuestParty = ({ partyId, crypto }: { partyId: string; crypto: Guest
       title={meta.title}
       participants={participants}
       messages={messages}
+      messagesLoading={entering}
       hasOlder={hasOlder}
       loadingOlder={loadingOlder}
       onLoadOlder={() => void loadOlder()}

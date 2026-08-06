@@ -5,6 +5,12 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **A party that is loading no longer says it is empty.** Opening a party — or
+  just reloading its page — showed "No messages yet" and "Nobody yet" while the
+  first page was still in flight, which is a claim, and a false one. The chat
+  takes `messagesLoading` and shows a spinner instead, the way the party list
+  already did; the guest page and the local viewer pass it too.
+
 ## 0.5.1 — 2026-08-06
 
 - The participant tooltip is no longer painted over by the header's own action

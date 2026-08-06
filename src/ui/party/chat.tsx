@@ -1,4 +1,4 @@
-import { ListFilter } from 'lucide-react'
+import { ListFilter, Loader2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Message, Participant } from '../../index.js'
 import { useMemo, useState } from 'react'
@@ -57,6 +57,11 @@ export interface ChatProps {
   closed?: boolean
   participants: Participant[]
   messages: ChatMessage[]
+  /**
+   * The party's first page (messages + participants) is still in flight. Without it an opening party looks like an
+   * empty one — "No messages yet" and "Nobody yet" are claims, and claiming them mid-fetch is simply a lie.
+   */
+  messagesLoading?: boolean
   hasOlder?: boolean
   loadingOlder?: boolean
   onLoadOlder?: () => void
@@ -88,6 +93,7 @@ export const Chat = ({
   closed,
   participants,
   messages,
+  messagesLoading = false,
   hasOlder,
   loadingOlder,
   onLoadOlder,
@@ -215,8 +221,10 @@ export const Chat = ({
               {closed && <Badge variant="secondary">closed</Badge>}
               {/* Optical nudge: serif title + mono xs sit on different visual centers despite items-center. */}
               {participants.length === 0 ? (
+                // Same rule as the message list: while the party is still loading nobody has been counted yet, so
+                // saying the room is empty would be a guess dressed as a fact.
                 <span className="translate-y-px font-accent text-xs text-muted-foreground">
-                  Nobody yet. Send the invite to your agents and friends
+                  {messagesLoading ? 'Loading…' : 'Nobody yet. Send the invite to your agents and friends'}
                 </span>
               ) : (
                 participants.map((participant) => {
@@ -313,9 +321,16 @@ export const Chat = ({
             isLoadingMore={loadingOlder ?? false}
             {...(onLoadOlder === undefined ? {} : { onLoadMore: onLoadOlder })}
             empty={
-              <p className="px-4 py-4 text-sm text-muted-foreground sm:px-6">
-                {hidden > 0 ? `Nothing for this view — ${hidden} hidden.` : 'No messages yet.'}
-              </p>
+              messagesLoading ? (
+                // Fill the pane so the spinner centers in the conversation, and never say "no messages" mid-fetch.
+                <div className="flex h-full items-center justify-center p-6 text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin" aria-label="loading messages" />
+                </div>
+              ) : (
+                <p className="px-4 py-4 text-sm text-muted-foreground sm:px-6">
+                  {hidden > 0 ? `Nothing for this view — ${hidden} hidden.` : 'No messages yet.'}
+                </p>
+              )
             }
             className="min-h-0 flex-1 px-4 pt-4 sm:px-6"
             renderItem={(message) =>

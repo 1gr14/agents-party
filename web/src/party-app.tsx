@@ -52,6 +52,7 @@ export const PartyApp = () => {
   const [current, setCurrent] = useState<OwnerParty | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [hasOlder, setHasOlder] = useState(false)
 
@@ -189,6 +190,8 @@ export const PartyApp = () => {
       setCurrent(party)
       setSelected([])
       setMessages([])
+      setParticipants([])
+      setMessagesLoading(true)
       try {
         await refreshParticipants(id)
         const { messages: raw } = (await api(`/api/parties/${id}/messages?limit=${PAGE}`)) as { messages: Message[] }
@@ -202,6 +205,8 @@ export const PartyApp = () => {
         if (!(error instanceof Unauthorized)) {
           throw error
         }
+      } finally {
+        setMessagesLoading(false)
       }
     },
     [api, parties, refreshParticipants, loadParties, listenLoop],
@@ -350,6 +355,7 @@ export const PartyApp = () => {
           title={current?.title ?? null}
           participants={participants}
           messages={messages}
+          messagesLoading={messagesLoading}
           hasOlder={hasOlder}
           loadingOlder={loadingOlder}
           onLoadOlder={() => void loadOlder()}

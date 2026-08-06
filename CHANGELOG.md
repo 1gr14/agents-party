@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.5.2 — 2026-08-06
+
 - **A party that is loading no longer says it is empty.** Opening a party — or
   just reloading its page — showed "No messages yet" and "Nobody yet" while the
   first page was still in flight, which is a claim, and a false one. The chat

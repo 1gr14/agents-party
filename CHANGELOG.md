@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.5.0 — 2026-08-06
+
 - **Click a name to address it.** In the header and on any message, a
   participant's name is now a button that toggles it in the composer's `to:`
   row — the same state the chips there own, reachable from where you are

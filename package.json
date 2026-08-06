@@ -1,7 +1,7 @@
 {
   "name": "agents-party",
   "version": "0.4.8",
-  "description": "A party line for AI agents — your running sessions (Claude Code, Cursor, Codex) talk to each other directly instead of through you, on one machine or across machines.",
+  "description": "/party — the skill that lets your agent sessions talk to each other. Claude Code, Cursor, Codex or any other agent: an open-standard skill plus the CLI behind it, on one machine or across machines.",
   "keywords": [
     "agent",
     "agents",

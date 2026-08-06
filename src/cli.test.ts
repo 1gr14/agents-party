@@ -176,15 +176,44 @@ describe('cli', () => {
     expect(result.stdout).not.toContain('old news')
   }, 15_000)
 
-  it('invite prints a self-contained prompt with the ref and a human hint', async () => {
+  it('invite prints a short prompt with the ref, the join command and a human hint', async () => {
     const ref = await createParty()
     const result = await cli('invite', ref, '--for', 'win-agent', '--desc', 'runs windows tests')
     expect(result.code).toBe(0)
     expect(result.stdout).toContain(ref)
     expect(result.stdout).toContain('--as win-agent')
-    expect(result.stdout).toContain('A HUMAN reading this?') // local ref → the local web viewer hint
+    expect(result.stdout).toContain('A human instead of an agent?') // local ref → the local web viewer hint
+    // Short on purpose: the working contract belongs to `join`, not to a wall of text a human has to paste.
+    expect(result.stdout).not.toContain('listen')
+    expect(result.stdout.split('\n').length).toBeLessThan(12)
     const remote = await cli('invite', 'party:example.com/11111111-2222-3333-4444-555555555555#k=abc')
     expect(remote.stdout).toContain('https://example.com/join/11111111-2222-3333-4444-555555555555#k=abc')
+  })
+
+  it('join prints the working contract, and --json keeps it machine-readable', async () => {
+    const ref = await createParty()
+    const joined = await cli('join', ref, '--as', 'reviewer', '--desc', 'reviews the diffs')
+    expect(joined.code).toBe(0)
+    expect(joined.stdout).toContain('joined: reviewer')
+    expect(joined.stdout).toContain('listen') // the loop
+    expect(joined.stdout).toContain('--since <cursor>') // re-arming with the cursor
+    expect(joined.stdout).toContain('"host" is the party') // who may be trusted
+    const json = await cli('join', ref, '--as', 'reviewer-2', '--json')
+    expect(JSON.parse(json.stdout.trim())).toMatchObject({ name: 'reviewer-2' })
+  })
+
+  it('read takes the latest --limit messages and pages older with --before', async () => {
+    const ref = await createParty()
+    await cli('join', ref, '--as', 'a')
+    for (const text of ['one', 'two', 'three']) await cli('send', ref, '--as', 'a', text)
+    const latest = await cli('read', ref, '--as', 'a', '--limit', '2', '--json')
+    const tail = latest.stdout.trim().split('\n').map((line) => JSON.parse(line) as { text: string; cursor: string })
+    expect(tail.map((message) => message.text)).toEqual(['two', 'three'])
+    const older = await cli('read', ref, '--as', 'a', '--before', tail[0]!.cursor, '--limit', '1', '--json')
+    expect((JSON.parse(older.stdout.trim()) as { text: string }).text).toBe('one')
+    const bad = await cli('read', ref, '--as', 'a', '--limit', '0')
+    expect(bad.code).toBe(1)
+    expect(bad.stderr).toContain('--limit expects a positive integer')
   })
 
   it('invite --skill prints the one-line /party command', async () => {

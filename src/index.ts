@@ -69,7 +69,7 @@ export { deleteParty } from './client/manage.js'
 export { readConfig, saveServerToken, tokenForServer } from './client/config.js'
 
 // Invites are just text; the MCP server and installers ride along
-export { generateInvitePrompt, generateSkillInvite } from './invite.js'
+export { generateInvitePrompt, generateSkillInvite, joinBriefing } from './invite.js'
 export type { InviteOptions } from './invite.js'
 export { createPartyMcpServer, runPartyMcpServer } from './mcp.js'
 export { install } from './install.js'

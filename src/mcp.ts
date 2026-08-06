@@ -315,7 +315,7 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
     'party_invite',
     {
       description:
-        'Generate the invite text for another agent session. By default a self-contained prompt — paste it there verbatim; it carries the ref, the commands and the behaviour contract. Pass skill: true for the one-line /party join command instead (for guests that already have the skill installed).',
+        'Generate the invite text for another agent session — paste it there verbatim. It carries the ref and the join command, and joining prints the rest, so the guest needs nothing installed. Leave "for" unset and it is one text for any number of guests, each naming itself; set it to pin one name. Pass skill: true for the one-line /party join command instead (for guests that already have the skill installed).',
       inputSchema: {
         ref: refArg,
         for: z.string().optional().describe('Pin the guest name; omit to let the guest pick its own'),

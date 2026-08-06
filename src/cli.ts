@@ -9,7 +9,7 @@ import { concernsParticipant } from './core/mentions.js'
 import { parseRef } from './core/refs.js'
 import type { Recipients } from './core/types.js'
 import { install } from './install.js'
-import { generateInvitePrompt, generateSkillInvite } from './invite.js'
+import { generateInvitePrompt, generateSkillInvite, joinBriefing } from './invite.js'
 import { runPartyMcpServer } from './mcp.js'
 import { prune, pruneRemote } from './prune.js'
 import { startServer } from './server/http.js'
@@ -27,9 +27,12 @@ const HELP = `agents-party: a party line for AI agents
 
 Usage:
   agents-party create [--title <t>] [--as <name>] [--desc <role>] [--server <host>] [--token <t>]
-  agents-party join <ref> --as <name> [--desc <role>]
+  agents-party join <ref> --as <name> [--desc <role>] [--json]
+                     (prints how the party works — where a new guest starts)
   agents-party send <ref> --as <name> [--to a,b | --to '*'] [--reply-to <msg-id>] [text | reads stdin]
-  agents-party read <ref> [--as <name>] [--since <cursor>] [--json]
+                     (multi-line or long text: pipe it via stdin; argv is for one-liners)
+  agents-party read <ref> [--as <name>] [--since <cursor>] [--before <cursor>]
+                     [--limit <n>] [--json]
   agents-party listen <ref> --as <name> [--since <cursor>] [--timeout <sec>] [--to-me] [--json]
   agents-party tail <ref> [--as <name>] [--since <cursor>] [--timeout <sec>] [--json]
   agents-party who <ref>
@@ -91,6 +94,28 @@ const parseTimeoutMs = (timeout: string | undefined): number | undefined => {
   return ms
 }
 
+const parseCount = (value: string | undefined, flag: string): number | undefined => {
+  if (value === undefined) return undefined
+  const count = Number(value)
+  if (!Number.isInteger(count) || count < 1) throw new Error(`${flag} expects a positive integer`)
+  return count
+}
+
+/**
+ * How the caller should spell `agents-party` in the commands we print back at them: the launcher they just used, so
+ * every printed line is copy-pasteable as is. npx and bunx run the binary out of their own caches, which is what the
+ * path of the entry script gives away; anything else is a global or linked install.
+ */
+const runnerPrefix = (): string => {
+  const entry = process.argv[1] ?? ''
+  if (viaNpx() || entry.includes('_npx')) return 'npx agents-party@latest'
+  if (entry.includes('.bun/install/cache') || entry.includes('bunx')) return 'bunx agents-party@latest'
+  return 'agents-party'
+}
+
+/** Launched through `npx` — the fingerprint npm leaves in the environment (`npm exec` is what npx runs). */
+const viaNpx = (): boolean => process.env.npm_lifecycle_event === 'npx' || process.env.npm_command === 'exec'
+
 const withConnection = async <T>(
   ref: string,
   token: string | undefined,
@@ -115,6 +140,8 @@ const run = async (argv: string[]): Promise<number> => {
       as: { type: 'string' },
       to: { type: 'string' },
       since: { type: 'string' },
+      before: { type: 'string' },
+      limit: { type: 'string' },
       timeout: { type: 'string' },
       server: { type: 'string' },
       token: { type: 'string' },
@@ -275,8 +302,15 @@ const run = async (argv: string[]): Promise<number> => {
     switch (command) {
       case 'join': {
         const as = need(values.as, '--as <name>')
-        await c.join(as, values.desc === undefined ? {} : { desc: values.desc })
-        console.log(`joined: ${as}`)
+        const participant = await c.join(as, values.desc === undefined ? {} : { desc: values.desc })
+        if (values.json) {
+          console.log(JSON.stringify(participant))
+          return 0
+        }
+        // The invite that brought this guest here is deliberately three lines; the working contract lives here, at the
+        // one moment an agent is certain to be listening for "what now?".
+        console.log(`joined: ${as}\n`)
+        console.log(joinBriefing({ ref: c.ref, name: as, runner: runnerPrefix() }))
         return 0
       }
       case 'send': {
@@ -286,6 +320,18 @@ const run = async (argv: string[]): Promise<number> => {
         const raw = fromStdin ? await readStdin() : rest.join(' ')
         const text = fromStdin ? raw : raw.trim()
         if (!text.trim()) throw new Error('nothing to send, pass text or pipe it via stdin')
+        // npm's Windows launcher is a .cmd shim, and cmd.exe cannot carry an embedded newline through an argument: it
+        // hands the callee everything up to the first line break and drops the rest. Measured on Windows 11 with
+        // `node -e` alone, so it has nothing to do with this CLI — bunx and stdin are both unaffected. The truncated
+        // argv is all this process ever sees, so the loss itself is undetectable here; what IS detectable is the one
+        // combination that causes it, and saying so beats a reader silently getting a headline without its body.
+        if (!fromStdin && process.platform === 'win32' && viaNpx() && !text.includes('\n')) {
+          console.error(
+            'agents-party: npx on Windows cuts an argument at the first newline, and this went out as a single line. ' +
+              'If you meant to send more, pipe it via stdin. Cure: npm i -g agents-party@latest, then call ' +
+              'agents-party directly.',
+          )
+        }
         const to: Recipients = values.to && values.to !== '*' ? values.to.split(',').map((s) => s.trim()) : '*'
         const msg = await c.send(as, text, {
           to,
@@ -295,9 +341,12 @@ const run = async (argv: string[]): Promise<number> => {
         return 0
       }
       case 'read': {
+        const limit = parseCount(values.limit, '--limit')
         const opts = {
           ...(values.as === undefined ? {} : { for: values.as }),
           ...(values.since === undefined ? {} : { since: values.since }),
+          ...(values.before === undefined ? {} : { before: values.before }),
+          ...(limit === undefined ? {} : { limit }),
         }
         for (const msg of await c.read(opts)) console.log(formatMessage(msg, values.json))
         return 0
@@ -370,4 +419,12 @@ const main = async (): Promise<number> => {
   }
 }
 
-process.exit(await main())
+const code = await main()
+process.exitCode = code
+// Exit by draining the loop, not by killing it. A hard process.exit() with an HTTP socket still open aborts libuv
+// mid-teardown, and on Windows that is a crash: "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" with exit
+// 127 AFTER the command had already done its work — the worst shape a failure can take, a success that reports as a
+// failure. Draining costs nothing measurable (an idle keep-alive socket does not hold node open), and the unref'd
+// timer below is the backstop: it cannot keep the process alive by itself, and it fires only if something really is
+// stuck, because hanging forever would be worse than the crash we are fixing.
+setTimeout(() => process.exit(code), 1000).unref()

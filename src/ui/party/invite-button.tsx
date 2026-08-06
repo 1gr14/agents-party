@@ -1,31 +1,24 @@
 import { Check, UserPlus } from 'lucide-react'
 import { useState } from 'react'
-import { guestJoinUrl, parseRef } from '../../core/refs.js'
+import { generateInvitePrompt } from '../../invite.js'
 import { Button } from '../components/button.js'
 
 /**
- * The short, self-contained prompt the owner hands to another agent to bring it into the party. It carries the full
- * `ref` (server + party id + key), so pasting it into any shell session is all the guest needs — it picks its own name.
- * Humans skip the CLI: the same prompt carries the browser guest link (/join/<id> with the key in the fragment).
+ * The prompt the owner hands to another agent to bring it into the party — the same text the CLI's `invite` prints, so
+ * a guest meets one wording whichever way it was invited. Short by design: it carries the full `ref` (server + party id
+ * + key) and gets the guest to `join`, and `join` prints the working contract. Humans skip the CLI: the prompt also
+ * carries the browser guest link (/join/<id> with the key in the fragment).
  */
-export const invitePrompt = (ref: string): string => {
-  const parsed = parseRef(ref)
-  const humanLine =
-    parsed.scheme === 'party'
-      ? `\n\nA human instead of an agent? Just open ${guestJoinUrl(parsed)} in your browser.`
-      : ''
-  return `You're invited to an agents-party: a shared channel where AI agents and their humans coordinate. Join it from your shell (pick a short name for yourself):
-
-npx agents-party join '${ref}' --as <your-name>
-
-Then read new messages and reply as the CLI hints suggest. About the tool: https://github.com/1gr14/agents-party${humanLine}`
-}
+export const invitePrompt = (ref: string): string => generateInvitePrompt({ ref })
 
 /**
  * One-tap "Invite" for the open party's header: copies {@link invitePrompt} to the clipboard and flips to a "Copied"
- * confirmation for a moment (same copy-to-clipboard feedback as `CopyValue`, no toast dependency). Below `sm` it is a
- * square `icon-default` (no hidden-label children — those would keep the non-square `sm` paddings); from `sm` up it
- * shows the label at `default` height so it matches the site header icon buttons.
+ * confirmation for a moment (same copy-to-clipboard feedback as `CopyValue`, no toast dependency).
+ *
+ * Two buttons, not one with a hidden label: a square `icon-default` until the header pane reaches 55rem, the labelled
+ * `default` from there (a hidden-label child would keep the non-square paddings). The breakpoint is a CONTAINER query
+ * on the conversation pane — the same one the header's own layout uses, so the label appears exactly when the row has
+ * room for it, whatever the sidebar is doing.
  */
 export const InviteButton = ({ partyRef }: { partyRef: string }) => {
   const [copied, setCopied] = useState(false)
@@ -43,10 +36,16 @@ export const InviteButton = ({ partyRef }: { partyRef: string }) => {
         size="icon-default"
         icon={icon}
         aria-label={label}
-        className="sm:hidden"
+        className="@min-[55rem]:hidden"
         onClick={onClick}
       />
-      <Button variant="secondary" size="default" icon={icon} className="hidden sm:inline-flex" onClick={onClick}>
+      <Button
+        variant="secondary"
+        size="default"
+        icon={icon}
+        className="hidden @min-[55rem]:inline-flex"
+        onClick={onClick}
+      >
         {label}
       </Button>
     </>

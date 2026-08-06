@@ -18,6 +18,7 @@ export { Textarea } from './components/textarea.js'
 export { Input, inputVariants } from './components/input.js'
 export { Badge, badgeVariants, type BadgeVariant } from './components/badge.js'
 export { InfiniteScroll, type InfiniteScrollProps } from './components/infinite-scroll.js'
+export { Menu, type MenuOption } from './components/menu.js'
 
 // Party pieces
 export { CopyValue } from './party/copy-value.js'
@@ -27,4 +28,5 @@ export { DiffCard, DiffModal } from './party/diff-modal.js'
 export { PartyComposer } from './party/composer.js'
 export { PartySidebar, type PartyListItem } from './party/sidebar.js'
 export { Chat, type ChatMessage, type ChatProps, type RecipientsState } from './party/chat.js'
+export { chatViewModes, isVisibleInView, type ChatViewMode } from './party/view-mode.js'
 export { GuestParty, type GuestCrypto } from './party/guest.js'

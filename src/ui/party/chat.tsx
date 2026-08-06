@@ -1,3 +1,4 @@
+import { ListFilter } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Message, Participant } from '../../index.js'
 import { useMemo, useState } from 'react'
@@ -5,11 +6,13 @@ import { looksLikeDiff, summarizeDiff } from '../../core/diff.js'
 import { Badge } from '../components/badge.js'
 import { Button } from '../components/button.js'
 import { InfiniteScroll } from '../components/infinite-scroll.js'
+import { Menu } from '../components/menu.js'
 import { cn } from '../utils.js'
 import { PartyComposer } from './composer.js'
 import { DiffCard, DiffModal } from './diff-modal.js'
 import { MessageText, ParticipantDot } from './message.js'
 import { PartySidebar, type PartyListItem } from './sidebar.js'
+import { chatViewModes, isVisibleInView, type ChatViewMode } from './view-mode.js'
 
 /** A message ready to render: the body is already decrypted (or `null` when it couldn't be). */
 export type ChatMessage = Pick<Message, 'id' | 'kind' | 'from' | 'to' | 'ts'> & {
@@ -60,7 +63,10 @@ export interface ChatProps {
   onSend: (text: string) => Promise<void>
   composerDisabled?: boolean
   recipients: RecipientsState
-  /** The viewer's own participant name — drives listen/send addressing (not shown as a marker). Defaults to `host`. */
+  /**
+   * The viewer's own participant name — drives listen/send addressing (not shown as a marker) and answers "is this
+   * for me?" for the view filter in the header. Defaults to `host`.
+   */
   currentName?: string
   sidebarClassName?: string
   /** Close the opened party (small screens show either the list or the conversation — this is the way back). */
@@ -88,6 +94,7 @@ export const Chat = ({
   onSend,
   composerDisabled,
   recipients,
+  currentName = 'host',
   sidebarClassName,
   onBack,
 }: ChatProps) => {
@@ -102,6 +109,23 @@ export const Chat = ({
 
   // A diff message opens in a modal on click; null when nothing is open.
   const [openDiff, setOpenDiff] = useState<{ text: string; title: string } | null>(null)
+
+  // The reader's own noise filter. Local state on purpose: it hides nothing from anyone else and fetches nothing, so
+  // switching is instant on messages already on screen.
+  const [viewMode, setViewMode] = useState<ChatViewMode>('all')
+  const visible = useMemo(
+    () =>
+      viewMode === 'all' ? messages : messages.filter((message) => isVisibleInView(message, viewMode, currentName)),
+    [messages, viewMode, currentName],
+  )
+  const hidden = messages.length - visible.length
+
+  // Clicking a name addresses it — in the header, and on any message. Only names the composer can actually address:
+  // active participants other than you, which is exactly what the recipients row offers.
+  const addressable = useMemo(() => new Set(recipients.options.map((option) => option.name)), [recipients.options])
+  const canAddress = (name: string): boolean => closed !== true && addressable.has(name)
+  const addressTitle = (name: string): string =>
+    recipients.selected.includes(name) ? `Stop addressing ${name}` : `Address ${name} in the next message`
 
   const recipientsRow = (
     <>
@@ -151,26 +175,42 @@ export const Chat = ({
       />
 
       {title === null ? (
-        <div className="hidden flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground md:flex">
-          Pick a party on the left, or start a new one there. Your agents create parties themselves with{' '}
-          <code className="mx-1 font-mono">agents-party create</code>
+        <div className="hidden flex-1 items-center justify-center p-6 md:flex">
+          {/* One paragraph, not two flex items: as direct children of the flex box the sentence and the command were
+              laid out side by side, each wrapping in its own column. */}
+          <p className="max-w-md text-center text-sm text-pretty text-muted-foreground">
+            Pick a party on the left, or start a new one there. Your agents create parties themselves with{' '}
+            <code className="font-mono whitespace-nowrap">agents-party create</code>
+          </p>
         </div>
       ) : (
-        <div className="flex h-full min-w-0 flex-1 flex-col">
-          {/* Same horizontal padding + min-height as the party-list header (`px-4 py-3 sm:px-6` + h-9 control). */}
-          <div className="flex min-h-[3.75rem] flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-3 sm:px-6">
-            {onBack !== undefined && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 md:hidden"
-                onClick={onBack}
-                aria-label="back to the list"
-              >
-                ←
-              </Button>
-            )}
+        // `@container` so the header breaks on the width of THIS pane, not the viewport: the sidebar eats 288px of it
+        // in the cabinet and none of it on the guest page, and a viewport breakpoint would fire at two different
+        // moments for the same layout.
+        <div className="@container flex h-full min-w-0 flex-1 flex-col">
+          {/* Same horizontal padding + min-height as the party-list header (`px-4 py-3 sm:px-6` + h-9 control).
+              Two steps, both measured on THIS pane, not the viewport: under 40rem the actions drop below the
+              participants (a phone has no room for both), and from 55rem — about a 1200px window once the sidebar
+              takes its 320px — the action buttons grow their labels. In between they are icons, which is what makes
+              one row enough. */}
+          {/* `relative z-20` lifts the WHOLE header above the message list. Without it the participant tooltip below
+              relies on out-ranking the virtualiser's absolutely positioned rows inside one stacking context, and lost:
+              the box painted under the messages, so their text ran straight through it. */}
+          <div className="relative z-20 flex min-h-[3.75rem] flex-col gap-2 border-b border-border px-4 py-3 @min-[40rem]:flex-row @min-[40rem]:flex-wrap @min-[40rem]:items-center @min-[40rem]:gap-x-3 sm:px-6">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+              {onBack !== undefined && (
+                // `self-start` + the title's own line height (h-7 = text-lg's 1.75rem): the arrow sits on the FIRST
+                // line of the title. Centred, it drifts down the moment the title wraps or a participant follows it.
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 self-start md:hidden"
+                  onClick={onBack}
+                  aria-label="back to the list"
+                >
+                  ←
+                </Button>
+              )}
               <h1 className="min-w-0 font-title text-lg font-semibold break-words text-accent-foreground">{title}</h1>
               {closed && <Badge variant="secondary">closed</Badge>}
               {/* Optical nudge: serif title + mono xs sit on different visual centers despite items-center. */}
@@ -179,34 +219,88 @@ export const Chat = ({
                   Nobody yet. Send the invite to your agents and friends
                 </span>
               ) : (
-                participants.map((participant) => (
-                  <span
-                    key={participant.name}
-                    className="flex min-w-0 translate-y-px items-center gap-1.5 font-accent text-xs"
-                  >
-                    <ParticipantDot color={participant.color} />
-                    <span
-                      className={cn(
-                        'min-w-0 font-semibold break-words text-foreground',
-                        participant.leftAt !== undefined && 'text-muted-foreground line-through',
+                participants.map((participant) => {
+                  const addressable = canAddress(participant.name)
+                  const selected = recipients.selected.includes(participant.name)
+                  const desc = participant.desc !== undefined && participant.desc !== '' ? participant.desc : null
+                  const chip = (
+                    <>
+                      <ParticipantDot color={participant.color} />
+                      {/* A name is an identifier, so it never wraps: "party-repo" split over two lines at the hyphen
+                          reads as two different participants. */}
+                      <span
+                        className={cn(
+                          'font-semibold whitespace-nowrap text-foreground',
+                          participant.leftAt !== undefined && 'text-muted-foreground line-through',
+                        )}
+                      >
+                        {participant.name}
+                      </span>
+                    </>
+                  )
+                  const chipClasses =
+                    '-mx-1 flex items-center gap-1.5 rounded-full px-1 py-0.5 font-accent text-xs transition-colors'
+                  return (
+                    // The role a participant plays is a sentence per person: inline it ate the header, so it lives in
+                    // a tooltip on HOVER only. Not on focus or tap: a tooltip opened by a click has to be dismissed by
+                    // another click somewhere harmless, and two of them can end up open at once.
+                    // Optical nudge (translate-y-px): serif title + mono xs sit on different visual centers.
+                    <span key={participant.name} className="group relative translate-y-px">
+                      {addressable ? (
+                        <button
+                          type="button"
+                          onClick={() => recipients.onToggle(participant.name)}
+                          aria-pressed={selected}
+                          aria-label={addressTitle(participant.name)}
+                          className={cn(chipClasses, 'cursor-pointer hover:bg-muted/60', selected && 'bg-muted')}
+                        >
+                          {chip}
+                        </button>
+                      ) : (
+                        <span className={chipClasses}>{chip}</span>
                       )}
-                    >
-                      {participant.name}
+                      {(desc !== null || addressable) && (
+                        <span className="pointer-events-none absolute top-full left-0 z-50 mt-1 hidden w-max max-w-64 rounded-md border border-border bg-card px-2 py-1 font-accent text-xs text-muted-foreground shadow-lg group-hover:block">
+                          {desc}
+                          {addressable && (
+                            <span className={cn('block text-muted-foreground/70', desc !== null && 'mt-0.5')}>
+                              {selected ? 'Click to stop addressing' : 'Click to address'}
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </span>
-                    {participant.desc !== undefined && participant.desc !== '' && (
-                      <span className="min-w-0 break-words text-muted-foreground">— {participant.desc}</span>
-                    )}
-                  </span>
-                ))
+                  )
+                })
               )}
             </div>
             {/* gap-1 matches the site header theme↔burger icon pair */}
-            {headerActions !== undefined && <div className="flex shrink-0 items-center gap-1">{headerActions}</div>}
+            <div className="flex shrink-0 items-center gap-1">
+              <Menu
+                options={chatViewModes}
+                value={viewMode}
+                onSelect={setViewMode}
+                icon={ListFilter}
+                ariaLabel="what to show"
+                triggerClassName={cn(viewMode !== 'all' && 'text-primary')}
+                // Stacked, the actions start at the LEFT edge of the pane, and a right-aligned panel would hang off
+                // the screen; in a row they sit at the right, where it must hang the other way.
+                panelClassName="left-0 @min-[40rem]:right-0 @min-[40rem]:left-auto"
+                label={
+                  // Same pane breakpoint as the action buttons: icon only until the row has room for words.
+                  <span className="hidden @min-[55rem]:inline">
+                    {chatViewModes.find((mode) => mode.value === viewMode)?.label}
+                    {viewMode !== 'all' && hidden > 0 && ` · ${hidden} hidden`}
+                  </span>
+                }
+              />
+              {headerActions}
+            </div>
           </div>
 
           {/* Messages: virtualized reverse chat — stickKey jumps to latest on party open; prepends stay anchored. */}
           <InfiniteScroll
-            data={messages}
+            data={visible}
             getItemKey={(message) => message.id}
             direction="up"
             estimateSize={88}
@@ -214,14 +308,30 @@ export const Chat = ({
             canLoadMore={hasOlder ?? false}
             isLoadingMore={loadingOlder ?? false}
             {...(onLoadOlder === undefined ? {} : { onLoadMore: onLoadOlder })}
-            empty={<p className="px-4 py-4 text-sm text-muted-foreground sm:px-6">No messages yet.</p>}
+            empty={
+              <p className="px-4 py-4 text-sm text-muted-foreground sm:px-6">
+                {hidden > 0 ? `Nothing for this view — ${hidden} hidden.` : 'No messages yet.'}
+              </p>
+            }
             className="min-h-0 flex-1 px-4 pt-4 sm:px-6"
             renderItem={(message) =>
               message.kind === 'message' ? (
                 <div className="flex flex-col gap-0.5 pb-3">
                   <div className="flex items-center gap-2 font-accent text-xs text-muted-foreground">
                     <ParticipantDot color={colorOf(message.from)} />
-                    <span className="font-semibold text-foreground">{message.from}</span>
+                    {canAddress(message.from) ? (
+                      <button
+                        type="button"
+                        onClick={() => recipients.onToggle(message.from)}
+                        aria-pressed={recipients.selected.includes(message.from)}
+                        title={addressTitle(message.from)}
+                        className="cursor-pointer font-semibold text-foreground hover:underline"
+                      >
+                        {message.from}
+                      </button>
+                    ) : (
+                      <span className="font-semibold text-foreground">{message.from}</span>
+                    )}
                     {message.to !== '*' && <span>→ {message.to.join(', ')}</span>}
                     <span>{timeLabel(message.ts)}</span>
                   </div>
@@ -250,7 +360,14 @@ export const Chat = ({
           />
 
           {/* Input pinned to the bottom — placeholder defaults to "Message…" in PartyComposer. */}
-          {!closed && <PartyComposer onSend={onSend} disabled={composerDisabled} toolbar={recipientsRow} />}
+          {!closed && (
+            <PartyComposer
+              onSend={onSend}
+              disabled={composerDisabled}
+              toolbar={recipientsRow}
+              mentions={recipients.options}
+            />
+          )}
         </div>
       )}
 

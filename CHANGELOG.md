@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.5.1 — 2026-08-06
+
 - The participant tooltip is no longer painted over by the header's own action
   buttons. `translate-y-px` on a name chip makes it a stacking context, so the
   tooltip's z-index only ever competed inside that chip — the chip itself sat

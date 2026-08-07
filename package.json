@@ -159,7 +159,7 @@
     "eslint-plugin-no-only-tests": "^3.4.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
-    "lucide-react": "^0.560.0",
+    "lucide-react": "^1.28.0",
     "prettier": "^3.9.6",
     "prettier-plugin-jsdoc": "^1.8.1",
     "publint": "^0.3.21",

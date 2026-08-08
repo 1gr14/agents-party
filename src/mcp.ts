@@ -329,7 +329,6 @@ export const createPartyMcpServer = (defaults: McpDefaults = {}, version = '0.0.
           ref: need(args.ref ?? defaults.ref, 'ref'),
           ...(args.for === undefined ? {} : { guestName: args.for }),
           ...(args.desc === undefined ? {} : { desc: args.desc }),
-          ...(defaults.as === undefined ? {} : { from: defaults.as }),
         }
         return text(args.skill === true ? generateSkillInvite(invite) : generateInvitePrompt(invite))
       } catch (error) {

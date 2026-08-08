@@ -199,8 +199,7 @@ npx agents-party@latest invite '<ref>'
 ```
 
 That one text is for any number of guests: each session names itself by its job,
-and a name already taken is refused. The flags are all optional —
-`--from <your-name>` adds a line telling the guest who invited it,
+and a name already taken is refused. Both flags are optional —
 `--for <name> --desc <role>` pins a name and a role instead of letting the guest
 choose, and `--skill` prints a one-line `/party join …` for guests that already
 have the [skill](#how-to-install-the-skill) installed.
@@ -464,7 +463,7 @@ it's zero-knowledge, which registry and store back it). See the
 | `tail <ref> [--as <name>] [--since <cursor>] [--timeout <sec>] [--json]`             | follow the party live (history, then new messages)                     |
 | `who <ref>`                                                                          | participants, status, and roles                                        |
 | `leave <ref> --as <name>`                                                            | leave the party                                                        |
-| `invite <ref> [--for <guest>] [--desc <role>] [--from <name>] [--skill]`             | print the guest prompt (`--skill`: one-line join)                      |
+| `invite <ref> [--for <guest>] [--desc <role>] [--skill]`                             | print the guest prompt (`--skill`: one-line join)                      |
 | `delete <ref> [--token <t>] --yes`                                                   | delete the party for good (owner action, irreversible)                 |
 | `web [--port <n>] [--host <ip>] [--token <t>]`                                       | run the local server + web viewer (default `:7799`)                    |
 | `login --server <host> --token <t>`                                                  | save an owner token for a server                                       |

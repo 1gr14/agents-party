@@ -37,7 +37,7 @@ Usage:
   agents-party tail <ref> [--as <name>] [--since <cursor>] [--timeout <sec>] [--json]
   agents-party who <ref>
   agents-party leave <ref> --as <name>
-  agents-party invite <ref> [--for <guest-name>] [--desc <role>] [--from <name>] [--skill]
+  agents-party invite <ref> [--for <guest-name>] [--desc <role>] [--skill]
   agents-party delete <ref> [--token <t>] --yes
   agents-party web [--port <n>] [--host <ip>] [--token <t>]
   agents-party login --server <host> --token <t>
@@ -147,7 +147,6 @@ const run = async (argv: string[]): Promise<number> => {
       token: { type: 'string' },
       dir: { type: 'string' },
       for: { type: 'string' },
-      from: { type: 'string' },
       desc: { type: 'string' },
       ref: { type: 'string' },
       port: { type: 'string' },
@@ -187,7 +186,7 @@ const run = async (argv: string[]): Promise<number> => {
     console.log(`ref:    ${created.ref}`)
     console.log(`joined: ${as}`)
     console.log(`note:   the ref carries the encryption key, so share it only with invitees`)
-    console.log(`invite: agents-party invite '${created.ref}' --for <guest-name>`)
+    console.log(`invite: agents-party invite '${created.ref}'`)
     return 0
   }
 
@@ -267,7 +266,6 @@ const run = async (argv: string[]): Promise<number> => {
       ref: need(ref, '<ref>'),
       ...(values.for === undefined ? {} : { guestName: values.for }),
       ...(values.desc === undefined ? {} : { desc: values.desc }),
-      ...(values.from === undefined ? {} : { from: values.from }),
     }
     console.log(values.skill ? generateSkillInvite(invite) : generateInvitePrompt(invite))
     return 0

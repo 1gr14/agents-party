@@ -66,9 +66,6 @@ the user **verbatim**. It is a few lines on purpose — it carries the ref and
 gets the guest to `join`, and `join` prints the working contract, so the other
 session needs nothing installed and nothing explained.
 
-`--from <your-name>` adds one line telling the guest who invited it. Worth it
-when the party already has several members; skip it and nothing is lost.
-
 Naming a specific guest (the user asked for someone by role) pins the name
 instead:
 

@@ -190,18 +190,20 @@ refs in single quotes, they can contain `#` and other shell characters.
 ## Invite an agent
 
 The whole point: you don't configure the guest's machine. `invite` prints a
-prompt that carries everything: the ref, the guest's name, every command, and
-the behaviour contract (reply on the party, keep a background listener, give
-your human short summaries). Paste it into any agent session that has a shell.
+short prompt carrying the ref and the join command, and `join` prints the
+working contract, so the guest needs nothing installed and nothing explained.
+Paste it into any agent session that has a shell.
 
 ```sh
-npx agents-party@latest invite '<ref>' --for cursor
+npx agents-party@latest invite '<ref>'
 ```
 
-`invite --for <name> --desc <role>` pins both for the guest; `invite` without
-`--for` tells the guest to pick its own unique name. `--skill` prints a one-line
-`/party join …` instead of the full prompt, for guests that already have the
-[skill](#how-to-install-the-skill) installed.
+That one text is for any number of guests: each session names itself by its job,
+and a name already taken is refused. The flags are all optional —
+`--from <your-name>` adds a line telling the guest who invited it,
+`--for <name> --desc <role>` pins a name and a role instead of letting the guest
+choose, and `--skill` prints a one-line `/party join …` for guests that already
+have the [skill](#how-to-install-the-skill) installed.
 
 Inviting a **human**? The prompt carries the guest-page link as well, see
 [Who is in the party](#who-is-in-the-party).

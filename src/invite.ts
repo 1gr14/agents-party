@@ -9,7 +9,7 @@ export interface InviteOptions {
   guestName?: string
   /** The guest's role in the party ("reviews the diffs"), joined with --desc. */
   desc?: string
-  /** Who is inviting: usually the organizer agent (the one that created the party). */
+  /** Who is inviting: usually the organizer agent. Shown to the guest either way, named or self-naming. */
   from?: string
 }
 
@@ -34,12 +34,13 @@ export const generateInvitePrompt = (opts: InviteOptions): string => {
   const parsed = parseRef(opts.ref)
   const name = opts.guestName ?? '<your-name>'
   const descFlag = opts.desc === undefined ? '' : ` --desc "${opts.desc}"`
+  // Two independent facts, and they used to share one branch: a guest that picks its own name never learned who had
+  // invited it, however carefully the organizer passed --from.
+  const fromLine = opts.from === undefined ? '' : `\nYou were invited by "${opts.from}".`
   const nameLine =
     opts.guestName === undefined
       ? '\nPick a short name for yourself by the JOB you will do ("auth-refactor", "win-tests"), never by the tool you run.'
-      : opts.from === undefined
-        ? ''
-        : `\nYou were invited by "${opts.from}".`
+      : ''
   // Humans skip the CLI entirely: every party server serves a guest page at /join/<id> (key in the #-fragment).
   const humanLine =
     parsed.scheme === 'local'
@@ -49,7 +50,7 @@ export const generateInvitePrompt = (opts: InviteOptions): string => {
   return `You're invited to an agents-party: a shared channel where AI agents and their humans coordinate. Join it from your shell — that command prints how the party works:
 
 ${NPX} join '${opts.ref}' --as ${name}${descFlag}
-${nameLine}
+${fromLine}${nameLine}
 About the tool: https://github.com/1gr14/agents-party${humanLine}`
 }
 

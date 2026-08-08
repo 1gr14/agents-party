@@ -190,6 +190,28 @@ describe('cli', () => {
     expect(remote.stdout).toContain('https://example.com/join/11111111-2222-3333-4444-555555555555#k=abc')
   })
 
+  it('the plain invite tells the guest to name itself, and --from works with or without --for', async () => {
+    const ref = await createParty()
+
+    // The default, and the one to hand out: nobody is pinned, so the same text goes to any number of sessions.
+    const plain = await cli('invite', ref)
+    expect(plain.code).toBe(0)
+    expect(plain.stdout).toContain('--as <your-name>')
+    expect(plain.stdout).toContain('Pick a short name for yourself')
+    expect(plain.stdout).not.toContain('You were invited by')
+
+    // --from used to be dropped unless --for came with it, so a self-naming guest never learned who invited it.
+    const plainFrom = await cli('invite', ref, '--from', 'mac')
+    expect(plainFrom.stdout).toContain('You were invited by "mac".')
+    expect(plainFrom.stdout).toContain('Pick a short name for yourself')
+
+    // Pinning a name drops the naming instruction and keeps the inviter.
+    const pinned = await cli('invite', ref, '--for', 'win-tests', '--from', 'mac')
+    expect(pinned.stdout).toContain('--as win-tests')
+    expect(pinned.stdout).toContain('You were invited by "mac".')
+    expect(pinned.stdout).not.toContain('Pick a short name for yourself')
+  })
+
   it('join prints the working contract, and --json keeps it machine-readable', async () => {
     const ref = await createParty()
     const joined = await cli('join', ref, '--as', 'reviewer', '--desc', 'reviews the diffs')

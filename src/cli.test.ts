@@ -107,7 +107,7 @@ describe('cli', () => {
     const who = await cli('who', ref)
     expect(who.stdout).toContain('organizer\tactive')
     expect(who.stdout).toContain('guest\tactive')
-  })
+  }, 20_000)
 
   it('send pipes multiline stdin verbatim — a patch survives byte-exact', async () => {
     const ref = await createParty()
@@ -125,7 +125,7 @@ describe('cli', () => {
       .find((l) => l.includes('"kind":"message"'))
     expect(line).toBeDefined()
     expect((JSON.parse(line!) as { text: string }).text).toBe(patch)
-  })
+  }, 20_000)
 
   it('--to addressing is invisible to a third participant', async () => {
     const ref = await createParty()

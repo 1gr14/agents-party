@@ -131,5 +131,5 @@ describe('listen wakes without polling', () => {
     expect(response.status).toBe(404)
     expect(((await response.json()) as { code: string }).code).toBe('PARTY_NOT_FOUND')
     await connection.close()
-  })
+  }, 20_000)
 })

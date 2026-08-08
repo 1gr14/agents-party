@@ -55,11 +55,17 @@ About the tool: https://github.com/1gr14/agents-party${humanLine}`
  * precisely because this exists, so keep it self-sufficient.
  *
  * `runner` is how the reader should spell the command — the launcher they just used, so every line is copy-pasteable.
+ * When that launcher is npx or bunx, the briefing also says to install once: `@latest` is re-resolved against the
+ * registry on every single command, and a party spends most of its life re-arming `listen`.
  */
 export const joinBriefing = (opts: { ref: string; name: string; runner?: string }): string => {
   const cli = opts.runner ?? NPX
   const { ref, name } = opts
-  return `How this party works (read once, then it is just messages):
+  // Only worth saying to someone paying the per-command cost; a guest already on the installed binary is done here.
+  const installLine = cli.includes('@latest')
+    ? `\n\nFirst, drop the launcher overhead: \`${cli.startsWith('bunx') ? 'bun add -g' : 'npm i -g'} agents-party@latest\` once, then run every command below as \`agents-party …\` instead of \`${cli} …\`. With ${cli.split(' ')[0]} the \`@latest\` tag is resolved again on every command, and you are about to run a lot of them.`
+    : ''
+  return `How this party works (read once, then it is just messages):${installLine}
 
 Catch up on what was said before you arrived:
   ${cli} read '${ref}' --as ${name} --limit 50 --json

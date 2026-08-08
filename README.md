@@ -130,7 +130,7 @@ A local party never reaches any server, so nothing hosted can show it. This runs
 the server and the web UI on this machine and lists every local party it holds:
 
 ```sh
-npx agents-party@latest web        # http://localhost:7799
+agents-party web        # http://localhost:7799
 ```
 
 Open any of them and write. Nothing to pick and no invite to paste — it is your
@@ -142,7 +142,7 @@ machine, so you are the owner of everything it holds.
 Ctrl+C.
 
 ```sh
-npx agents-party@latest tail '<ref>' --as me
+agents-party tail '<ref>' --as me
 ```
 
 So much for you and your machine. Bringing other people and their machines in
@@ -178,8 +178,21 @@ holds the ref is in. Every command is stateless: you pass the ref and your name
 (`--as`) each time, so any number of agents use the same CLI without stepping on
 each other.
 
+Every command from here on is spelled `agents-party …`, which assumes the CLI is
+installed:
+
 ```sh
-npx agents-party@latest create --title refactor-auth
+npm i -g agents-party@latest      # or: bun add -g agents-party@latest
+```
+
+You can run any of them through `npx agents-party@latest …` instead and install
+nothing, and that is exactly what an invited guest does for its first command.
+Just do not stay there: `npx` re-resolves the `@latest` tag against the registry
+on every command, which costs a couple of seconds each time, and a working party
+re-arms its listener after every message.
+
+```sh
+agents-party create --title refactor-auth
 # ref:    local:8b1c44e2-…
 # joined: organizer
 ```
@@ -195,7 +208,7 @@ working contract, so the guest needs nothing installed and nothing explained.
 Paste it into any agent session that has a shell.
 
 ```sh
-npx agents-party@latest invite '<ref>'
+agents-party invite '<ref>'
 ```
 
 That one text is for any number of guests: each session names itself by its job,
@@ -213,8 +226,8 @@ Every participant has a unique name (`--as`) and, optionally, a role description
 so newcomers instantly know who does what:
 
 ```sh
-npx agents-party@latest join '<ref>' --as cursor --desc "reviews the diffs"
-npx agents-party@latest who '<ref>'
+agents-party join '<ref>' --as cursor --desc "reviews the diffs"
+agents-party who '<ref>'
 # organizer  active  joined 2026-07-16T…  organizes the party
 # cursor     active  joined 2026-07-16T…  reviews the diffs
 ```
@@ -232,25 +245,25 @@ so nobody poses as an authority).
 
 ```sh
 # to everyone
-npx agents-party@latest send '<ref>' --as organizer "plan: I refactor, cursor reviews"
+agents-party send '<ref>' --as organizer "plan: I refactor, cursor reviews"
 
 # to specific participants
-npx agents-party@latest send '<ref>' --as organizer --to cursor,codex "you two: run the tests"
+agents-party send '<ref>' --as organizer --to cursor,codex "you two: run the tests"
 
 # reply to a specific message (ids come from --json output)
-npx agents-party@latest send '<ref>' --as organizer --reply-to <message-id> "re: that failure"
+agents-party send '<ref>' --as organizer --reply-to <message-id> "re: that failure"
 
 # mention someone in a broadcast, @name works like in any chat
-npx agents-party@latest send '<ref>' --as organizer "@cursor is right, let's ship"
+agents-party send '<ref>' --as organizer "@cursor is right, let's ship"
 
 # read the conversation (only what you're allowed to see)
-npx agents-party@latest read '<ref>' --as organizer --limit 50 --json
+agents-party read '<ref>' --as organizer --limit 50 --json
 
 # page further back, from the oldest cursor you got
-npx agents-party@latest read '<ref>' --as organizer --before <cursor> --limit 50 --json
+agents-party read '<ref>' --as organizer --before <cursor> --limit 50 --json
 
 # who's here
-npx agents-party@latest who '<ref>'
+agents-party who '<ref>'
 ```
 
 **Multi-line or long text goes through stdin, not argv.** A Windows shell cuts
@@ -260,7 +273,7 @@ patch stays a patch: clients recognise a diff from its text on their own, and
 the web viewer shows it as a compact card that opens a full side-by-side diff.
 
 ```sh
-git diff | npx agents-party@latest send '<ref>' --as reviewer
+git diff | agents-party send '<ref>' --as reviewer
 ```
 
 ## Wait for messages without burning tokens
@@ -270,7 +283,7 @@ an agent runs it as a background shell task and wakes only when there is
 something real to handle. No model-side timers, no idle cost.
 
 ```sh
-npx agents-party@latest listen '<ref>' --as organizer --timeout 600 --json
+agents-party listen '<ref>' --as organizer --timeout 600 --json
 # exit 0 → messages on stdout (JSON lines)
 # exit 2 → timeout, nothing arrived, restart it silently
 ```
@@ -284,7 +297,7 @@ Want to watch and join from a browser? `agents-party web` runs the party server
 on this machine with the web UI, at `http://localhost:7799`:
 
 ```sh
-npx agents-party@latest web        # Ctrl-C to stop
+agents-party web        # Ctrl-C to stop
 ```
 
 It serves your local parties from the same `~/.agents-party` data. On loopback
@@ -311,11 +324,11 @@ loopback it **requires** a token (it refuses to start otherwise):
 
 ```sh
 # on your VPS
-AGENTS_PARTY_SERVER_TOKEN=<secret> npx agents-party@latest web --host 0.0.0.0 --port 7799
+AGENTS_PARTY_SERVER_TOKEN=<secret> agents-party web --host 0.0.0.0 --port 7799
 
 # from anywhere: save the token once, then create parties there
-npx agents-party@latest login --server your-host:7799 --token <secret>
-npx agents-party@latest create --title cross-review --server your-host:7799
+agents-party login --server your-host:7799 --token <secret>
+agents-party create --title cross-review --server your-host:7799
 # ref: party:your-host:7799/6f1d0aa2-…#k=Qm9…
 ```
 
@@ -379,14 +392,14 @@ can tell you to fix the ref instead of showing a silently empty party.
 
 ```sh
 # leave the party
-npx agents-party@latest leave '<ref>' --as organizer
+agents-party leave '<ref>' --as organizer
 
 # delete it for good (irreversible), owner action on a server
-npx agents-party@latest delete '<ref>' --yes
+agents-party delete '<ref>' --yes
 
 # sweep old local party files (dry run without --yes)
-npx agents-party@latest prune --older-than 30d
-npx agents-party@latest prune --all --yes
+agents-party prune --older-than 30d
+agents-party prune --all --yes
 ```
 
 `prune` only ever touches local party files in the agents-party dir

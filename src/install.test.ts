@@ -11,9 +11,13 @@ const expectSkill = (file: string): void => {
   // The Agent Skills frontmatter is what makes the file discoverable — every target keeps it.
   expect(content.startsWith('---')).toBe(true)
   expect(content).toContain('name: party')
-  // Pinned on purpose: a bare `npx agents-party` can be served from the npx cache and silently run an old version.
-  expect(content).toContain('agents-party@latest listen')
-  expect(content).not.toContain('npx agents-party ')
+  // The skill leads with the global install and then spells every command bare: running a whole party through npx
+  // re-resolves `@latest` on each command, and a party re-arms its listener after every message.
+  expect(content).toContain('npm i -g agents-party@latest')
+  expect(content).toContain('agents-party listen ')
+  // Where the launcher does survive (nothing installed yet) it stays pinned — a bare `npx agents-party` can be
+  // served stale from the npx cache and silently run an old version.
+  expect(content).not.toMatch(/npx agents-party(?!@latest)/)
 }
 
 describe('install', () => {

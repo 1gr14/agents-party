@@ -1,3 +1,4 @@
+import { joinBriefing } from './invite.js'
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -188,6 +189,21 @@ describe('cli', () => {
     expect(result.stdout.split('\n').length).toBeLessThan(12)
     const remote = await cli('invite', 'party:example.com/11111111-2222-3333-4444-555555555555#k=abc')
     expect(remote.stdout).toContain('https://example.com/join/11111111-2222-3333-4444-555555555555#k=abc')
+  })
+
+  it('the briefing tells a launcher-run guest to install once, and leaves an installed one alone', () => {
+    // A party spends most of its life re-arming listen, and every npx command re-resolves @latest against the registry.
+    const npx = joinBriefing({ ref: 'local:abc', name: 'win-tests', runner: 'npx agents-party@latest' })
+    expect(npx).toContain('npm i -g agents-party@latest')
+    expect(npx).toContain('resolved again on every command')
+
+    const bunx = joinBriefing({ ref: 'local:abc', name: 'win-tests', runner: 'bunx agents-party@latest' })
+    expect(bunx).toContain('bun add -g agents-party@latest')
+
+    // Already on the installed binary: nothing to advise.
+    expect(joinBriefing({ ref: 'local:abc', name: 'win-tests', runner: 'agents-party' })).not.toContain(
+      '-g agents-party',
+    )
   })
 
   it('the plain invite is the default: no name pinned, one text for any number of guests', async () => {

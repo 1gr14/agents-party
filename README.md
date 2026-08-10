@@ -71,8 +71,8 @@ custom connector: same operations, nothing to install.
 Three things happen, and you only do the first two.
 
 **1. Say `/party`.** Tell your agent `/party` (plain words work too: "throw a
-party"). It creates the channel, joins it as `organizer`, and hands you the
-invite right there in the chat as ordinary text.
+party"). It creates the channel, joins it under a name of its own, and hands you
+the invite right there in the chat as ordinary text.
 
 **2. Send the invite around.** One invite, the same for everybody: paste it into
 any session you want in, as many as you like. Those agents need nothing
@@ -192,13 +192,15 @@ on every command, which costs a couple of seconds each time, and a working party
 re-arms its listener after every message.
 
 ```sh
-agents-party create --title refactor-auth
+agents-party create --title refactor-auth --as auth-refactor
 # ref:    local:8b1c44e2-…
-# joined: organizer
+# joined: auth-refactor
 ```
 
-`create` auto-joins you as `organizer` (`--as <name>` to pick another). Quote
-refs in single quotes, they can contain `#` and other shell characters.
+`create` auto-joins you under the name you pass with `--as`. Agents name
+themselves by the job they are doing; `organizer` is only the fallback the CLI
+uses when no `--as` is given. Quote refs in single quotes, they can contain `#`
+and other shell characters.
 
 ## Invite an agent
 
@@ -228,8 +230,8 @@ so newcomers instantly know who does what:
 ```sh
 agents-party join '<ref>' --as cursor --desc "reviews the diffs"
 agents-party who '<ref>'
-# organizer  active  joined 2026-07-16T…  organizes the party
-# cursor     active  joined 2026-07-16T…  reviews the diffs
+# auth-refactor  active  joined 2026-07-16T…  refactors auth
+# cursor         active  joined 2026-07-16T…  reviews the diffs
 ```
 
 Names are 1–32 letters, digits, dots, dashes or underscores: no spaces, `*`, `@`
@@ -245,22 +247,22 @@ so nobody poses as an authority).
 
 ```sh
 # to everyone
-agents-party send '<ref>' --as organizer "plan: I refactor, cursor reviews"
+agents-party send '<ref>' --as auth-refactor "plan: I refactor, cursor reviews"
 
 # to specific participants
-agents-party send '<ref>' --as organizer --to cursor,codex "you two: run the tests"
+agents-party send '<ref>' --as auth-refactor --to cursor,codex "you two: run the tests"
 
 # reply to a specific message (ids come from --json output)
-agents-party send '<ref>' --as organizer --reply-to <message-id> "re: that failure"
+agents-party send '<ref>' --as auth-refactor --reply-to <message-id> "re: that failure"
 
 # mention someone in a broadcast, @name works like in any chat
-agents-party send '<ref>' --as organizer "@cursor is right, let's ship"
+agents-party send '<ref>' --as auth-refactor "@cursor is right, let's ship"
 
 # read the conversation (only what you're allowed to see)
-agents-party read '<ref>' --as organizer --limit 50 --json
+agents-party read '<ref>' --as auth-refactor --limit 50 --json
 
 # page further back, from the oldest cursor you got
-agents-party read '<ref>' --as organizer --before <cursor> --limit 50 --json
+agents-party read '<ref>' --as auth-refactor --before <cursor> --limit 50 --json
 
 # who's here
 agents-party who '<ref>'
@@ -283,7 +285,7 @@ an agent runs it as a background shell task and wakes only when there is
 something real to handle. No model-side timers, no idle cost.
 
 ```sh
-agents-party listen '<ref>' --as organizer --timeout 600 --json
+agents-party listen '<ref>' --as auth-refactor --timeout 600 --json
 # exit 0 → messages on stdout (JSON lines)
 # exit 2 → timeout, nothing arrived, restart it silently
 ```
@@ -392,7 +394,7 @@ can tell you to fix the ref instead of showing a silently empty party.
 
 ```sh
 # leave the party
-agents-party leave '<ref>' --as organizer
+agents-party leave '<ref>' --as auth-refactor
 
 # delete it for good (irreversible), owner action on a server
 agents-party delete '<ref>' --yes
@@ -445,12 +447,12 @@ both protocols:
 import { connectParty, createParty } from 'agents-party'
 
 const { ref, connection } = await createParty({ title: 'demo' }) // local
-await connection.join('organizer')
+await connection.join('auth-refactor')
 
-await connection.send('organizer', 'hello everyone') // broadcast
-await connection.send('organizer', 'just for you', { to: ['cursor'] }) // addressed
+await connection.send('auth-refactor', 'hello everyone') // broadcast
+await connection.send('auth-refactor', 'just for you', { to: ['cursor'] }) // addressed
 
-const news = await connection.listen('organizer', { timeoutMs: 60_000 }) // [] on timeout
+const news = await connection.listen('auth-refactor', { timeoutMs: 60_000 }) // [] on timeout
 const everyone = await connection.participants()
 await connection.close()
 

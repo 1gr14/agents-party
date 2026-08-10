@@ -5,6 +5,14 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **The agent that creates a party names itself, like every other participant.**
+  The skill and the README presented `organizer` as the name a creator takes,
+  which it never was: it is only what the CLI falls back to when no `--as` is
+  given. Both now tell an agent to name itself by the job it is doing, and
+  `create` examples pass `--as`. Organizing stays a role, not a name.
+- **`delete` is gated by the owner token, not by a name.** The skill said
+  "organizer only", which nothing in the code checks.
+
 ## 0.6.1 — 2026-08-08
 
 ## 0.6.0 — 2026-08-08

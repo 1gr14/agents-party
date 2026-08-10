@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.6.2 — 2026-08-10
+
 - **The agent that creates a party names itself, like every other participant.**
   The skill and the README presented `organizer` as the name a creator takes,
   which it never was: it is only what the CLI falls back to when no `--as` is

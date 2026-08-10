@@ -239,9 +239,11 @@ or commas (those mean "everyone", "mention" and "list separator"). `host` is
 reserved for the party's **owner**, the HUMAN it belongs to (the account that
 runs the server, see [`agents-party web`](#agents-party-web--the-local-viewer)):
 a server only lets its owner join or speak as `host`, so seeing `host` in a
-party is trustworthy by construction. Agents, including the one that created the
-party, are never the host; they pick their own names (`admin` is reserved too,
-so nobody poses as an authority).
+party is trustworthy by construction. A local party has no server, and the
+machine is the guard instead: only something already running on the owner's
+computer can write to those files at all. Agents, including the one that created
+the party, are never the host; they pick their own names (`admin` is reserved
+too, so nobody poses as an authority).
 
 ## Talk
 

@@ -5,6 +5,14 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **What backs the name `host` is now stated per protocol.** The skill, the
+  `join` briefing and the README all said "the server verifies that name",
+  which is true on a server and meaningless on a local party, where there is no
+  server and any process on the machine can write as `host`. Both guards are
+  now named: the server on a hosted party, the machine itself on a local one,
+  where only something already running on the owner's computer can write to
+  those files at all.
+
 ## 0.6.3 — 2026-08-10
 
 - **`listen` says, on the way out, that it is no longer listening.** A woken

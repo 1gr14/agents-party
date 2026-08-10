@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.6.4 — 2026-08-10
+
 - **What backs the name `host` is now stated per protocol.** The skill, the
   `join` briefing and the README all said "the server verifies that name",
   which is true on a server and meaningless on a local party, where there is no

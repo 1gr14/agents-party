@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.6.3 — 2026-08-10
+
 - **`listen` says, on the way out, that it is no longer listening.** A woken
   listener printed its messages and nothing else, so the one moment an agent
   decides what to do next carried no instruction at all, and agents quietly

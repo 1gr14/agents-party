@@ -392,11 +392,17 @@ export const createPartyApi = (ctx: PartyApiContext): PartyApi => {
       let since = url.searchParams.get('since') ?? undefined
       const viewer = url.searchParams.get('for')
       if (viewer === null) throw new PartyError('BAD_REQUEST', 'listen needs ?for=<your-name>.')
+      // `all=1` is the OWNER's view, the same one `GET /messages` gives when it is asked for no viewer: the whole
+      // party, side conversations between two agents included. Without it an owner watching the party never sees an
+      // addressed message live — the filter hides it AND the poll never ends on it — and the message only turns up
+      // when the page is reloaded into the unfiltered history. `for` still says who is asking, because that is what
+      // decides which messages are "someone else's" and therefore worth waking for.
+      const view = url.searchParams.get('all') === '1' ? {} : { for: viewer }
       // No cursor means "from now", not "from the beginning": without this the first read returns the whole history,
       // any old message from somebody else ends the poll immediately, and `listen` degrades into `read` — which is the
       // opposite of what it is for. A caller that wants the backlog asks `read` for it.
       if (since === undefined) {
-        since = (await store.read({ for: viewer })).at(-1)?.cursor
+        since = (await store.read(view)).at(-1)?.cursor
       }
       const timeoutSec = Math.min(
         LISTEN_MAX_SEC,
@@ -411,7 +417,7 @@ export const createPartyApi = (ctx: PartyApiContext): PartyApi => {
         // Full gapless batch from the caller's own `since` — a foreign message is what ends the long-poll.
         let messages: Message[]
         try {
-          messages = await store.read({ for: viewer, ...(since === undefined ? {} : { since }) })
+          messages = await store.read({ ...view, ...(since === undefined ? {} : { since }) })
         } catch (error) {
           // The party may have been deleted under this poll — answer with the truth, not a raw driver error.
           if ((await ctx.registry.get(partyId)) === null) {
@@ -427,7 +433,7 @@ export const createPartyApi = (ctx: PartyApiContext): PartyApi => {
           const settleMs = ctx.listenSettleMs ?? LISTEN_SETTLE_MS
           if (settleMs > 0 && Date.now() + settleMs < deadline) {
             await new Promise((resolve) => setTimeout(resolve, settleMs))
-            const settled = await store.read({ for: viewer, ...(since === undefined ? {} : { since }) })
+            const settled = await store.read({ ...view, ...(since === undefined ? {} : { since }) })
             if (settled.length > messages.length) {
               return json(200, { messages: settled })
             }

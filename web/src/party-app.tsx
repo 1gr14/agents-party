@@ -136,7 +136,10 @@ export const PartyApp = () => {
         while (!ctl.signal.aborted) {
           try {
             const since = cursorRef.current === null ? '' : `&since=${cursorRef.current}`
-            const res = await fetch(`/api/parties/${id}/listen?for=${HOST}&timeoutSec=50${since}`, {
+            // `all=1`: this is the owner's machine and the owner's party, so the stream carries everything, exactly
+            // like the history load above (which asks for no viewer). Filtered to `for=host`, an agent-to-agent
+            // message never arrived here and never even ended the poll, so it showed up only on a page reload.
+            const res = await fetch(`/api/parties/${id}/listen?for=${HOST}&all=1&timeoutSec=50${since}`, {
               signal: ctl.signal,
               headers: tokenRef.current ? { authorization: `Bearer ${tokenRef.current}` } : {},
             })

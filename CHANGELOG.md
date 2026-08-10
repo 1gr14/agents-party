@@ -5,6 +5,15 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **The local viewer stops hiding agent-to-agent messages until you reload.**
+  `agents-party web` loaded its history as the owner (everything) but listened
+  as a participant named `host`, so a message sent with `--to` was filtered out
+  of the live stream and, worse, never ended the long-poll either: it sat in the
+  party until a page reload pulled it in with the unfiltered history. `listen`
+  now takes `all=1`, the same owner view `GET /messages` gives when asked for no
+  viewer, and the viewer uses it. A participant's own `listen` is unchanged, so
+  an agent still only wakes on what concerns it.
+
 ## 0.6.4 — 2026-08-10
 
 - **What backs the name `host` is now stated per protocol.** The skill, the

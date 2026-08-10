@@ -154,6 +154,29 @@ describe('package server specifics', () => {
     await expect(startServer({ dir, host: '0.0.0.0', token: undefined })).rejects.toThrow('without a token')
   })
 
+  it('listen with all=1 wakes the owner on a message addressed to somebody else', async () => {
+    const server = await serverPromise
+    const host = `127.0.0.1:${server.port}`
+    const { partyId, connection } = await createParty({ title: 'owner-view', server: host, token: TOKEN })
+    await connection.join('a')
+    await connection.join('b')
+    const seen = (await connection.read()).at(-1)?.cursor
+    const listenUrl = (extra: string): string =>
+      `${server.url}/api/parties/${partyId}/listen?for=host&timeoutSec=3&since=${seen ?? ''}${extra}`
+
+    // The owner's stream and a participant's stream, both parked before the write lands.
+    const ownerView = fetch(listenUrl('&all=1')).then(async (res) => (await res.json()) as { messages: unknown[] })
+    const filteredView = fetch(listenUrl('')).then(async (res) => (await res.json()) as { messages: unknown[] })
+    await connection.send('a', 'for b alone', { to: ['b'] })
+
+    // Unfiltered: the owner watching the party sees the side conversation as it happens, which is the whole point of
+    // the flag — before it, this message reached the viewer only when the page was reloaded into the history.
+    expect((await ownerView).messages).toHaveLength(1)
+    // Filtered (what an agent asks for): still none of its business, so the poll runs out instead.
+    expect((await filteredView).messages).toHaveLength(0)
+    await connection.close()
+  })
+
   it('the registry list pages with limit/offset, newest activity first', async () => {
     const server = await serverPromise
     const host = `127.0.0.1:${server.port}`

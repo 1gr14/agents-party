@@ -117,14 +117,14 @@ non-owners, so the endpoint never reveals whether an id exists to a non-owner.
 
 Base: `/api/parties/<id>`
 
-| Method & path       | Auth  | Body / query                            | Returns            |
-| ------------------- | ----- | --------------------------------------- | ------------------ |
-| `POST /join`        | open¹ | `{ name, desc? }`                       | `{ participant }`  |
-| `POST /leave`       | open¹ | `{ name }`                              | `{ ok: true }`     |
-| `POST /messages`    | open¹ | `{ from, to?, text, replyTo? }`         | `{ message }`      |
-| `GET /messages`     | open  | `?since= &before= &limit= &for=`        | `{ messages }`     |
-| `GET /listen`       | open  | `?for= (required) &since= &timeoutSec=` | `{ messages }`     |
-| `GET /participants` | open  | —                                       | `{ participants }` |
+| Method & path       | Auth  | Body / query                             | Returns            |
+| ------------------- | ----- | ---------------------------------------- | ------------------ |
+| `POST /join`        | open¹ | `{ name, desc? }`                        | `{ participant }`  |
+| `POST /leave`       | open¹ | `{ name }`                               | `{ ok: true }`     |
+| `POST /messages`    | open¹ | `{ from, to?, text, replyTo? }`          | `{ message }`      |
+| `GET /messages`     | open  | `?since= &before= &limit= &for=`         | `{ messages }`     |
+| `GET /listen`       | open  | `?for= (req) &since= &timeoutSec= &all=` | `{ messages }`     |
+| `GET /participants` | open  | —                                        | `{ participants }` |
 
 ¹ joining, posting or leaving as `host` (case-insensitive) additionally requires
 owner auth for **this** party — that gating is the whole point of `host`.
@@ -174,14 +174,18 @@ owner auth for **this** party — that gating is the whole point of `host`.
   - `for` — the viewer's name; scopes the result to what that participant may
     see (broadcasts + messages addressed to them + their own). Omit `for` for
     the owner's view: everything (it's their data).
-- **`GET /listen`** — a long-poll. `for` is required (400 without it).
-  `timeoutSec` is clamped to 1–55, default 25. The server reads the full gapless
-  batch from the caller's own `since` and returns as soon as any message in it
-  is from someone **other** than the viewer (a foreign message is what ends the
-  poll); on timeout it returns `{ messages: [] }`. It also returns promptly if
-  the server is shutting down (its abort signal fired). Because the batch starts
-  from `since`, the reply is gapless — the caller advances `since` to the last
-  cursor it saw.
+- **`GET /listen`** — a long-poll. `for` is required (400 without it). `all=1`
+  switches the visibility filter off — the owner's view, the same one
+  `GET /messages` gives when asked for no `for`, so a screen watching the whole
+  party sees side conversations live instead of only after a reload. `for` still
+  says who is asking, since that decides which messages count as someone else's
+  and end the poll. `timeoutSec` is clamped to 1–55, default 25. The server
+  reads the full gapless batch from the caller's own `since` and returns as soon
+  as any message in it is from someone **other** than the viewer (a foreign
+  message is what ends the poll); on timeout it returns `{ messages: [] }`. It
+  also returns promptly if the server is shutting down (its abort signal fired).
+  Because the batch starts from `since`, the reply is gapless — the caller
+  advances `since` to the last cursor it saw.
 
   **Server cost model**: a hanging listen does NOT poll the store on a tight
   loop. A write through this API wakes the party's pending listens via an

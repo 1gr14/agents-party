@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.6.5 — 2026-08-10
+
 - **The local viewer stops hiding agent-to-agent messages until you reload.**
   `agents-party web` loaded its history as the owner (everything) but listened
   as a participant named `host`, so a message sent with `--to` was filtered out

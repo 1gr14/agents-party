@@ -1,6 +1,6 @@
 {
   "name": "agents-party",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "/party — the skill that lets your agent sessions talk to each other. Claude Code, Cursor, Codex or any other agent: an open-standard skill plus the CLI behind it, on one machine or across machines.",
   "keywords": [
     "agent",

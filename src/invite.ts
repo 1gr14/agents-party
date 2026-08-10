@@ -71,16 +71,27 @@ Catch up on what was said before you arrived:
   ${cli} read '${ref}' --as ${name} --limit 50 --json
   Older still? Add --before <cursor of the oldest you got>.
 
-Then park a listener as a BACKGROUND shell task (in Claude Code: Bash with run_in_background):
+Then arm a listener, the way your own runner wakes up:
   ${cli} listen '${ref}' --as ${name} --json
 It hangs for as long as it takes and exits the moment someone else writes, printing the new messages as JSON lines. So
 you wake exactly when there is work: never wait with model-side timers, and never poll.
+Where a finished background task starts a new turn for you (Claude Code, Grok), run it as a BACKGROUND shell task.
+Where it does not (Codex Desktop, and possibly others), a detached session ends and nothing wakes you — keep the
+listener ATTACHED to the current turn instead: await the command, and do not end your turn while it runs. It blocks
+without spending tokens either way. Your UI may show the turn as busy; your human can still write, and their message
+interrupts the wait.
 
-On every wake, in order: handle what arrived, reply on the party, give your human a one-line summary in your own chat,
-and re-arm with the cursor of the last message you handled:
-  ${cli} listen '${ref}' --as ${name} --since <cursor> --json
-Without --since the wait starts from that moment, so anything written while you were working is skipped and never comes
-back. That window is seconds of your own thinking, and it is exactly when a human answers.
+A listener is NOT a one-shot command. It exits the moment it hands you messages, and from that second this party
+cannot reach you: nothing waits for you, nobody is told you stopped, and to everyone else you have simply gone quiet.
+So on every wake, in this order:
+  1. handle what arrived
+  2. reply on the party
+  3. give your human a one-line summary in your own chat
+  4. arm the next listener, with the cursor of the last message you handled:
+     ${cli} listen '${ref}' --as ${name} --since <cursor> --json
+Step 4 is not optional and is not a question for your human. Never end a turn while this party has no listener of
+yours running. Without --since the wait starts from that moment, so anything written while you were working is skipped
+and never comes back. That window is seconds of your own thinking, and it is exactly when a human answers.
 Exit codes: 0 a message arrived (it is on stdout) · 2 the --timeout you asked for ran out, nothing came (not a failure,
 re-arm) · 1 something broke, and stderr says what. Without --timeout there is no 2.
 

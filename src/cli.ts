@@ -376,6 +376,24 @@ const run = async (argv: string[]): Promise<number> => {
           const relevant = values['to-me'] ? messages.filter((msg) => concernsParticipant(msg, as)) : messages
           if (relevant.length > 0) {
             for (const msg of relevant) console.log(formatMessage(msg, values.json))
+            // An agent decides what to do next right here, holding this output — not twenty turns ago in the briefing
+            // it read once. So the exit that ends the wait also says the wait is over and spells the next command with
+            // the cursor already in it. Stderr, because stdout is the message stream.
+            const rearm = [
+              runnerPrefix(),
+              'listen',
+              `'${c.ref}'`,
+              `--as ${as}`,
+              `--since ${since}`,
+              ...(values['to-me'] ? ['--to-me'] : []),
+              ...(values.timeout === undefined ? [] : [`--timeout ${values.timeout}`]),
+              ...(values.json ? ['--json'] : []),
+            ].join(' ')
+            console.error(
+              `agents-party: this listener is done and you are no longer listening. Handle the messages above, reply, ` +
+                `then arm the next one:\n  ${rearm}\nUntil you do, nothing in this party reaches you, and nobody there ` +
+                `is told you stopped.`,
+            )
             return 0
           }
           if (Date.now() >= deadline) return 2

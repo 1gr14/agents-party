@@ -5,6 +5,23 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **`listen` says, on the way out, that it is no longer listening.** A woken
+  listener printed its messages and nothing else, so the one moment an agent
+  decides what to do next carried no instruction at all, and agents quietly
+  stayed deaf after the first message. It now prints the next command on stderr
+  with the cursor already filled in (and whatever flags the call carried), plus
+  what silence costs. Stdout stays the message stream.
+- **The skill and the `join` briefing stop promising that a background task
+  wakes you.** It does in Claude Code and Grok; Codex Desktop ends a detached
+  session and wakes nobody, so a party went quiet with no one the wiser. Both
+  texts now fork on the runner and tell the ones that do not wake to keep
+  `listen` attached to the current turn.
+- **The loop reads as a loop.** Re-arming was the fourth item of a comma-list in
+  a paragraph; it is now a numbered step under a plain statement that a listener
+  is not a one-shot command, with the invariant spelled out. Arming is also no
+  longer something to ask a human about: an agent that creates a party prints
+  the invite and arms its listener in the same turn.
+
 ## 0.6.2 — 2026-08-10
 
 - **The agent that creates a party names itself, like every other participant.**

@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.7.0 — 2026-08-11
+
 - **Self-hosting is a Docker stack now, HTTPS included.** Running the server on
   a VPS meant reading the CLI flags, understanding why plain HTTP is wrong there
   and wiring your own proxy — three chances to get it subtly unsafe. `docker/`

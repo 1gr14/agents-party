@@ -1,5 +1,5 @@
 import { Send } from 'lucide-react'
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../components/button.js'
 import { Textarea } from '../components/textarea.js'
 import { cn } from '../utils.js'
@@ -74,14 +74,16 @@ export const PartyComposer = ({
     return [...starts, ...rest].slice(0, MENTION_LIMIT)
   }, [mention, mentions])
 
-  const autoGrow = () => {
+  // Keyed on the value, not fired from the handlers: measuring right after a `setText` would still read the previous
+  // content (React has not committed it yet), which is how a send used to leave the field stuck at its grown height.
+  useLayoutEffect(() => {
     const el = textareaRef.current
-    if (!el) {
+    if (el === null) {
       return
     }
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT_PX)}px`
-  }
+  }, [text])
 
   /** Recompute the open mention from wherever the caret is now (typing, clicking, arrowing). */
   const syncMention = () => {
@@ -124,7 +126,6 @@ export const PartyComposer = ({
     el.focus()
     el.setSelectionRange(caretRef.current, caretRef.current)
     caretRef.current = null
-    autoGrow()
   }, [text])
 
   const send = async () => {
@@ -137,7 +138,6 @@ export const PartyComposer = ({
       await onSend(trimmed)
       setText('')
       setMention(null)
-      autoGrow()
     } finally {
       setSending(false)
       textareaRef.current?.focus()
@@ -205,7 +205,6 @@ export const PartyComposer = ({
           className="max-h-36 min-h-9 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 shadow-none focus-visible:border-transparent dark:bg-transparent"
           onChange={(event) => {
             setText(event.target.value)
-            autoGrow()
             syncMention()
           }}
           onSelect={syncMention}

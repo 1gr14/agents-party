@@ -1,0 +1,46 @@
+# A party server on your own machine, reachable over HTTPS, in one command:
+#
+#   cp .env.example .env   # fill in the domain and the token
+#   docker compose up -d
+#
+# Two containers: the server, and Caddy in front of it doing TLS. The server itself speaks plain HTTP
+# and has no TLS of its own, and over plain HTTP the owner token and every party key cross the wire in
+# the clear — so it is never published to the host here; only Caddy can reach it.
+
+name: agents-party
+
+services:
+  agents-party:
+    build:
+      context: .
+      args:
+        AGENTS_PARTY_VERSION: ${AGENTS_PARTY_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      # The owner credential: create, delete and the full party list hang on it. Mandatory here — Caddy
+      # connects from the compose network, so no request is loopback and the token is the only proof left.
+      AGENTS_PARTY_SERVER_TOKEN: ${AGENTS_PARTY_SERVER_TOKEN:?set AGENTS_PARTY_SERVER_TOKEN in .env}
+    volumes:
+      - parties:/data
+    # No `ports:` on purpose — the only way in is through Caddy.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      AGENTS_PARTY_DOMAIN: ${AGENTS_PARTY_DOMAIN:?set AGENTS_PARTY_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The issued certificates: keep them, or every recreate asks Let's Encrypt for new ones and hits the rate limit.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - agents-party
+
+volumes:
+  parties:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,5 @@
+# Caddy fetches and renews the certificate itself. Point the domain's DNS at this machine BEFORE the
+# first `docker compose up`: the ACME challenge is what proves the domain is yours.
+{$AGENTS_PARTY_DOMAIN} {
+	reverse_proxy agents-party:7799
+}

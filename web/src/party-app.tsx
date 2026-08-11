@@ -4,6 +4,7 @@ import type { Message, Participant, PartyMeta, Recipients } from '../../src/inde
 import { Button } from '../../src/ui/components/button.js'
 import { Input } from '../../src/ui/components/input.js'
 import { Chat, type ChatMessage } from '../../src/ui/party/chat.js'
+import { DeletePartyButton } from '../../src/ui/party/delete-party-button.js'
 import { InviteButton } from '../../src/ui/party/invite-button.js'
 import type { PartyListItem } from '../../src/ui/party/sidebar.js'
 import { decrypt, encrypt } from './lib/crypto.js'
@@ -278,6 +279,21 @@ export const PartyApp = () => {
     [api, current, selected, ensureJoined],
   )
 
+  // Owner-only, like everything else here: the parties on this machine are this machine's to drop. The open party is
+  // closed first — its listen would otherwise keep polling a party the server no longer has.
+  const removeParty = useCallback(async () => {
+    if (current === null) {
+      return
+    }
+    listenAbortRef.current?.abort()
+    await api(`/api/parties/${current.id}`, { method: 'DELETE' })
+    joinedRef.current.delete(current.id)
+    setCurrent(null)
+    setMessages([])
+    setParticipants([])
+    await loadParties()
+  }, [api, current, loadParties])
+
   const boot = useCallback(async () => {
     try {
       await loadParties()
@@ -324,10 +340,18 @@ export const PartyApp = () => {
     .filter((p) => p.leftAt === undefined && p.name !== HOST)
     .map((p) => ({ name: p.name, color: p.color }))
 
-  // The invite ref carries the plaintext key so a pasted prompt is all a guest needs. There's no delete here — parties
-  // are managed from the CLI — so the header only offers Invite.
+  // The invite ref carries the plaintext key so a pasted prompt is all a guest needs.
   const inviteRef =
     current !== null && current.key !== null ? `party:${window.location.host}/${current.id}#k=${current.key}` : null
+
+  // Same two actions the site's header offers, for the same reason: you are the owner of every party this server holds.
+  const headerActions =
+    current === null ? undefined : (
+      <>
+        {inviteRef !== null && <InviteButton partyRef={inviteRef} />}
+        <DeletePartyButton title={current.title} onDelete={removeParty} />
+      </>
+    )
 
   return (
     <div className="flex h-dvh w-full flex-col">
@@ -354,7 +378,7 @@ export const PartyApp = () => {
           partiesLoadingMore={partiesLoadingMore}
           partiesLoading={partiesLoading}
           onLoadMoreParties={() => void loadMoreParties()}
-          headerActions={inviteRef !== null ? <InviteButton partyRef={inviteRef} /> : undefined}
+          headerActions={headerActions}
           title={current?.title ?? null}
           participants={participants}
           messages={messages}

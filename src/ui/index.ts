@@ -23,6 +23,7 @@ export { Menu, type MenuOption } from './components/menu.js'
 // Party pieces
 export { CopyValue } from './party/copy-value.js'
 export { InviteButton, invitePrompt } from './party/invite-button.js'
+export { DeletePartyButton } from './party/delete-party-button.js'
 export { MessageText, ParticipantDot, participantDotClass } from './party/message.js'
 export { DiffCard, DiffModal } from './party/diff-modal.js'
 export { PartyComposer } from './party/composer.js'

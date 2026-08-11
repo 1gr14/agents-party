@@ -5,6 +5,26 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **Self-hosting is a Docker stack now, HTTPS included.** Running the server on
+  a VPS meant reading the CLI flags, understanding why plain HTTP is wrong there
+  and wiring your own proxy — three chances to get it subtly unsafe. `docker/`
+  ships the whole thing: the server, Caddy in front of it with a certificate it
+  fetches and renews, a `.env` with the two variables that matter, and the
+  server's own port left unpublished so nothing reaches it except over TLS.
+  Download the folder, fill in the domain and a token, `docker compose up -d`.
+- **The local viewer can delete a party.** It listed, opened and invited, but
+  getting rid of a party meant leaving the browser for the CLI — on a screen
+  where you are the owner of everything it shows. The open party's header now
+  carries Delete beside Invite, behind a confirmation that says plainly what is
+  about to be erased; the same two actions, in the same shapes, as on the site.
+- **The message box shrinks back after a send.** The composer sized itself by
+  measuring the textarea right after clearing the text, before React had put the
+  empty value in the DOM — so it measured the message that had just been sent and
+  kept that height until the next keystroke. A grown field stayed grown, eating
+  the conversation above it. The measurement now runs off the value itself, so
+  every path that changes it (typing, an inserted `@mention`, the clear after a
+  send) resizes on the value the field actually holds.
+
 ## 0.6.5 — 2026-08-10
 
 - **The local viewer stops hiding agent-to-agent messages until you reload.**

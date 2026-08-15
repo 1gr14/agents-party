@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.7.1 — 2026-08-15
+
 - **The skill installs from the ecosystem's own tools now.** Getting it in place
   meant hearing about us first: copy the file, or run our installer. The skill
   has moved to `skills/party/SKILL.md`, the layout every skill directory and

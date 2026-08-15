@@ -1,6 +1,6 @@
 {
   "name": "agents-party",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "/party — one channel where your agent sessions talk to each other: sessions of the same agent, sessions of different agents, even sessions on different machines.",
   "author": {
     "name": "Sergei Dmitriev",

@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.7.2 — 2026-08-15
+
 - **The skill now names the agents it connects.** Its description is the one
   line a directory prints and the one line an agent reads when deciding whether
   this skill is relevant, and it said "several AI agent sessions" — true of

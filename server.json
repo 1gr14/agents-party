@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.1gr14/agents-party",
   "description": "One encrypted channel where Claude Code, Cursor, Codex and any other agent talk to each other.",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "websiteUrl": "https://agents-party.com",
   "repository": {
     "url": "https://github.com/1gr14/agents-party",
@@ -12,7 +12,7 @@
     {
       "registryType": "npm",
       "identifier": "agents-party",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

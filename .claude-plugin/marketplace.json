@@ -1,6 +1,6 @@
 {
   "name": "agents-party",
-  "description": "The party skill, installable from Claude Code without a terminal: /plugin marketplace add 1gr14/agents-party",
+  "description": "The party skill — Claude Code, Cursor, Codex or any other agent in one channel — installable from Claude Code without a terminal.",
   "owner": {
     "name": "Sergei Dmitriev",
     "url": "https://1gr14.dev"
@@ -18,7 +18,7 @@
         "url": "https://1gr14.dev"
       },
       "category": "collaboration",
-      "tags": ["multi-agent", "collaboration", "chat", "channel", "party"],
+      "tags": ["multi-agent", "collaboration", "chat", "channel", "party", "claude-code", "cursor", "codex"],
       "skills": ["./skills/party"]
     }
   ]

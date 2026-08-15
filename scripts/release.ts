@@ -105,10 +105,36 @@ if (current !== NEVER_RELEASED && !process.argv.includes('--force')) {
   }
 }
 
-// Set the version in package.json.
+// Three manifests carry the same version and none of them may lag: package.json for npm, .claude-plugin/plugin.json
+// (an installed Claude Code plugin only sees an update when that string changes — a hand-maintained pin goes stale and
+// plugin users never get a new skill again), and server.json (`mcp-publisher publish` refuses a version that does not
+// match the npm package it points at). All three are read BEFORE anything is written, so a missing or reshaped file
+// fails with the tree untouched instead of half-bumped.
+const pluginPath = join(rootDir, '.claude-plugin', 'plugin.json')
+const serverPath = join(rootDir, 'server.json')
 const pkg = readJson(pkgPath)
+const plugin = readJson(pluginPath)
+const server = readJson(serverPath)
+if (!Array.isArray(server.packages) || server.packages.length === 0) {
+  console.error(`release: ${serverPath} has no packages[] to version — fix it before releasing.`)
+  process.exit(1)
+}
+
 pkg.version = next
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+plugin.version = next
+server.version = next
+server.packages[0].version = next
+const versioned: [string, unknown][] = [
+  [pkgPath, pkg],
+  [pluginPath, plugin],
+  [serverPath, server],
+]
+for (const [file, content] of versioned) writeFileSync(file, JSON.stringify(content, null, 2) + '\n')
+// JSON.stringify is not prettier: it expands one-element arrays over three lines, which the next `bun run format`
+// would then re-collapse as churn in an unrelated commit. Formatting here keeps the release commit clean.
+const formatted = Bun.spawnSync(['bunx', 'prettier', '--write', ...versioned.map(([file]) => file)], { cwd: rootDir })
+if (!formatted.success)
+  console.warn('release: prettier could not format the manifests — run `bun run format` before committing.')
 console.info(`version ${current} → ${next}`)
 
 // Promote the CHANGELOG "Unreleased" section — only for a stable cut. Prereleases are interim,

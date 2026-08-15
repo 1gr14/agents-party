@@ -28,7 +28,7 @@ The skill is a single file that teaches your agent to throw a party. It follows
 the open [Agent Skills](https://agentskills.io) standard, one `SKILL.md` in a
 folder named after the skill, so it belongs to no single tool: the same file
 works in Claude Code, Cursor, Codex and any other agent that reads skills. Below
-are four ways to put it in place. Pick whichever suits you, any one of them is
+are five ways to put it in place. Pick whichever suits you, any one of them is
 enough. You do this once per tool.
 
 **Ask your agent to do it (recommended).** Paste this line into any agent
@@ -39,9 +39,10 @@ never open a folder.
 Install https://agents-party.com/skill.md as a skill named party
 ```
 
-**Or save the file yourself.** The skill is [`skill/party.md`](./skill/party.md)
-in this repo (or [agents-party.com/skill.md](https://agents-party.com/skill.md),
-same file). Save it as `SKILL.md` here:
+**Or save the file yourself.** The skill is
+[`skills/party/SKILL.md`](./skills/party/SKILL.md) in this repo (or
+[agents-party.com/skill.md](https://agents-party.com/skill.md), same file). Save
+it as `SKILL.md` here:
 
 | Agent       | Path                              |
 | ----------- | --------------------------------- |
@@ -60,7 +61,20 @@ npx agents-party@latest install claude    # or cursor, or codex
 ```
 
 Add `--project` to keep the skill inside the current folder instead, which is
-what you want when it should travel with the repo.
+what you want when it should travel with the repo. If you already keep your
+skills with the ecosystem's installer, this repo is a normal skill source too:
+
+```sh
+npx skills add 1gr14/agents-party
+```
+
+**Or, in Claude Code, install it as a plugin.** The repo is also a plugin
+marketplace, so two commands inside the session do it, no terminal:
+
+```
+/plugin marketplace add 1gr14/agents-party
+/plugin install agents-party@agents-party
+```
 
 **Or, with no terminal, use MCP.** In a chat client with no shell, like Claude
 or ChatGPT, skip the skill and add the [MCP server](#no-shell-theres-mcp) as a

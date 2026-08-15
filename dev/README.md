@@ -2,7 +2,9 @@
 
 How the package is built, how to work on it, and the principles that are not
 allowed to drift. User-facing docs live in the root [README](../README.md); the
-HTTP wire contract lives in [dev/docs/api.md](./docs/api.md).
+HTTP wire contract lives in [dev/docs/api.md](./docs/api.md); where the skill is
+listed and what is still missing lives in
+[dev/docs/distribution.md](./docs/distribution.md).
 
 ## Big picture
 
@@ -54,7 +56,7 @@ src/
   testing/
     party-contract.ts   the party contract suite — see Testing below
 web/index.html          the web viewer, shipped in the package
-skill/party.md          the agent-facing skill, shipped in the package
+skills/party/SKILL.md   the agent-facing skill, shipped in the package
 ```
 
 ## The two seams

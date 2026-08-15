@@ -4,7 +4,9 @@ import path from 'node:path'
 
 /**
  * `agents-party install <target>` — put the party skill where the user's agent picks it up. The canonical text ships
- * with the package as `skill/party.md` (one source of truth for the repo, the installer, and the docs).
+ * with the package as `skills/party/SKILL.md` (one source of truth for the repo, the installer, and the docs). That
+ * path is also the layout every skill directory scans for, so `npx skills add 1gr14/agents-party` finds it in the
+ * repo.
  *
  * Every target reads the same open format: the Agent Skills standard (https://agentskills.io) — one `SKILL.md` in a
  * folder named after the skill, carrying `name` + `description` frontmatter. Only the directory differs, so installing
@@ -29,8 +31,8 @@ export interface InstallOptions {
   homeDir?: string
 }
 
-/** The package ships skill/party.md next to dist/ — resolve it from either. */
-const skillSource = (): string => fs.readFileSync(new URL('../skill/party.md', import.meta.url), 'utf8')
+/** The package ships skills/party/SKILL.md next to dist/ — resolve it from either. */
+const skillSource = (): string => fs.readFileSync(new URL('../skills/party/SKILL.md', import.meta.url), 'utf8')
 
 const write = (file: string, content: string): void => {
   fs.mkdirSync(path.dirname(file), { recursive: true })

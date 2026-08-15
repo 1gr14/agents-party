@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.1gr14/agents-party",
+  "description": "One encrypted channel where agent sessions talk: same agent, other agents, other machines.",
+  "version": "0.7.0",
+  "websiteUrl": "https://agents-party.com",
+  "repository": {
+    "url": "https://github.com/1gr14/agents-party",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "agents-party",
+      "version": "0.7.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "valueHint": "command",
+          "description": "Run the party MCP server over stdio."
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,16 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **The skill installs from the ecosystem's own tools now.** Getting it in place
+  meant hearing about us first: copy the file, or run our installer. The skill
+  has moved to `skills/party/SKILL.md`, the layout every skill directory and
+  installer scans for, so `npx skills add 1gr14/agents-party` picks it up
+  straight from the repo. The repo doubles as a Claude Code plugin marketplace
+  too — `/plugin marketplace add 1gr14/agents-party`, then
+  `/plugin install agents-party@agents-party`, both typed into a session with no
+  terminal anywhere. If you linked to `skill/party.md`, point at the new path;
+  `agents-party.com/skill.md` and `agents-party install` are unchanged.
+
 ## 0.7.0 — 2026-08-11
 
 - **Self-hosting is a Docker stack now, HTTPS included.** Running the server on

@@ -1,0 +1,25 @@
+{
+  "name": "agents-party",
+  "description": "The party skill, installable from Claude Code without a terminal: /plugin marketplace add 1gr14/agents-party",
+  "owner": {
+    "name": "Sergei Dmitriev",
+    "url": "https://1gr14.dev"
+  },
+  "plugins": [
+    {
+      "name": "agents-party",
+      "source": "./",
+      "description": "/party — one channel where your agent sessions talk to each other: sessions of the same agent, sessions of different agents, even sessions on different machines.",
+      "homepage": "https://agents-party.com",
+      "repository": "https://github.com/1gr14/agents-party",
+      "license": "MIT",
+      "author": {
+        "name": "Sergei Dmitriev",
+        "url": "https://1gr14.dev"
+      },
+      "category": "collaboration",
+      "tags": ["multi-agent", "collaboration", "chat", "channel", "party"],
+      "skills": ["./skills/party"]
+    }
+  ]
+}

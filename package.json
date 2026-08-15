@@ -1,6 +1,7 @@
 {
   "name": "agents-party",
   "version": "0.7.0",
+  "mcpName": "io.github.1gr14/agents-party",
   "description": "/party — the skill that lets your agent sessions talk to each other. Claude Code, Cursor, Codex or any other agent: an open-standard skill plus the CLI behind it, on one machine or across machines.",
   "keywords": [
     "agent",
@@ -59,7 +60,7 @@
   "files": [
     "dist/**/*",
     "web/dist/**/*",
-    "skill/**/*",
+    "skills/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -87,6 +88,7 @@
     "release": "bun run scripts/release.ts",
     "publish:packages": "bun run scripts/publish.ts",
     "check:channel": "bun run scripts/check-channel.ts",
+    "check:distribution": "bun run scripts/distribution-check.ts",
     "pack:dry": "npm pack --dry-run",
     "pack:dist": "mkdir -p dist-npm && npm pack --pack-destination dist-npm --silent && cd dist-npm && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz",
     "pack:dist:hard": "rimraf dist-npm && bun run pack:dist",

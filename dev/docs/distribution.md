@@ -22,9 +22,9 @@ bun run check:distribution
 
 ## Сделано
 
-**2026-08-15, выкачено в 0.7.1.** Пакет на npm, тег `v0.7.1`, сайт задеплоен.
-Проверено вживую: `npx skills add 1gr14/agents-party --list` → «Found 1 skill:
-party»; `/plugin marketplace add 1gr14/agents-party` +
+**2026-08-15, выкачено в 0.7.2.** Пакет на npm, теги `v0.7.1` и `v0.7.2`, сайт
+задеплоен. Проверено вживую: `npx skills add 1gr14/agents-party --list` → «Found
+1 skill: party»; `/plugin marketplace add 1gr14/agents-party` +
 `/plugin install agents-party@agents-party` ставится и показывает один скилл,
 ~130 токенов always-on; `mcp-publisher validate` против живого реестра — valid.
 
@@ -73,7 +73,7 @@ Code, Cursor, Codex or any other agent» живёт в четырёх места
 
 Единственное, что упирается в живой GitHub-логин (device flow в браузере) и
 поэтому не сделано автоматом. `server.json` уже валиден против живого реестра, а
-0.7.1 на npm уже несёт `mcpName`, так что это буквально две команды из корня
+0.7.2 на npm уже несёт `mcpName`, так что это буквально две команды из корня
 репы пакета:
 
 ```sh
@@ -121,14 +121,14 @@ issue-форма
 `### Collaboration & Project Management`:
 
 ```text
-- [agents-party](https://github.com/1gr14/agents-party) - One channel where your agent sessions talk to each other: sessions of the same agent, of different agents, even on different machines. End-to-end encrypted, local files or your own server. *By [@1gr14](https://github.com/1gr14)*
+- [agents-party](https://github.com/1gr14/agents-party) - One channel where your agent sessions talk to each other: Claude Code, Cursor, Codex or any other agent, on one machine or across machines. End-to-end encrypted, local files or your own server. *By [@1gr14](https://github.com/1gr14)*
 ```
 
 **travisvn/awesome-claude-skills** (14k★). Fork → PR в таблицу
 `### Individual Skills`:
 
 ```text
-| **[agents-party](https://github.com/1gr14/agents-party)** | A shared channel where agent sessions talk to each other — same agent, different agents, different machines |
+| **[agents-party](https://github.com/1gr14/agents-party)** | A shared channel where agent sessions talk to each other — Claude Code, Cursor, Codex or any other agent, on one machine or across machines |
 ```
 
 Там нет категории про multi-agent; в PR стоит предложить завести её — отдельная
@@ -138,7 +138,7 @@ issue-форма
 внутри `<details>` подходящей темы (или завести свою — «Multi-agent»):
 
 ```text
-- [1gr14/agents-party](https://github.com/1gr14/agents-party) - Shared channel for agent sessions across agents and machines
+- [1gr14/agents-party](https://github.com/1gr14/agents-party) - Shared channel where Claude Code, Cursor, Codex and any other agent talk to each other, across machines
 ```
 
 **punkpeye/awesome-mcp-servers** — только после пункта 1, подаём MCP-сервер, а

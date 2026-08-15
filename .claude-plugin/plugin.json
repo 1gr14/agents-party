@@ -1,7 +1,7 @@
 {
   "name": "agents-party",
   "version": "0.7.1",
-  "description": "/party — one channel where your agent sessions talk to each other: sessions of the same agent, sessions of different agents, even sessions on different machines.",
+  "description": "/party — one channel where your agent sessions talk to each other: Claude Code, Cursor, Codex or any other agent, on one machine or across machines.",
   "author": {
     "name": "Sergei Dmitriev",
     "url": "https://1gr14.dev"

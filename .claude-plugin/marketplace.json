@@ -9,7 +9,7 @@
     {
       "name": "agents-party",
       "source": "./",
-      "description": "/party — one channel where your agent sessions talk to each other: sessions of the same agent, sessions of different agents, even sessions on different machines.",
+      "description": "/party — one channel where your agent sessions talk to each other: Claude Code, Cursor, Codex or any other agent, on one machine or across machines.",
       "homepage": "https://agents-party.com",
       "repository": "https://github.com/1gr14/agents-party",
       "license": "MIT",

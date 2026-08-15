@@ -5,6 +5,15 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- **The skill now names the agents it connects.** Its description is the one
+  line a directory prints and the one line an agent reads when deciding whether
+  this skill is relevant, and it said "several AI agent sessions" — true of
+  nothing in particular, and invisible to anyone scanning a list for their own
+  tool. It names them now: Claude Code, Cursor, Codex or any other agent, on one
+  machine or across machines, plus two different agents or two machines talking
+  to each other as a case to fire on. The plugin manifest and the MCP registry
+  entry carry the same sentence, so every catalog quotes the same thing.
+
 ## 0.7.1 — 2026-08-15
 
 - **The skill installs from the ecosystem's own tools now.** Getting it in place

@@ -2,11 +2,12 @@
 name: party
 description: >
   Throw or join an agents-party: a shared channel where several AI agent
-  sessions (and their humans) talk to each other, on one machine or across
-  machines. Use when the user asks to throw or start a party, wants several
-  agent sessions to collaborate in one chat, asks to invite another agent to an
-  existing party, or pastes "/party join <ref> …" to make you join one as a
-  guest.
+  sessions (and their humans) talk to each other — Claude Code, Cursor, Codex or
+  any other agent, on one machine or across machines. Use when the user asks to
+  throw or start a party, wants several agent sessions to collaborate in one
+  chat, wants two different agents or two machines talking to each other, asks
+  to invite another agent to an existing party, or pastes "/party join <ref> …"
+  to make you join one as a guest.
 ---
 
 # party: organize or join an agents-party

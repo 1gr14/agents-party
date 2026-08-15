@@ -23,10 +23,13 @@ bun run check:distribution
 ## Сделано
 
 **2026-08-15, выкачено в 0.7.2.** Пакет на npm, теги `v0.7.1` и `v0.7.2`, сайт
-задеплоен. Проверено вживую: `npx skills add 1gr14/agents-party --list` → «Found
-1 skill: party»; `/plugin marketplace add 1gr14/agents-party` +
+задеплоен, сервер опубликован в официальном MCP-реестре как
+`io.github.1gr14/agents-party@0.7.2`. Проверено вживую:
+`npx skills add 1gr14/agents-party --list` → «Found 1 skill: party»;
+`/plugin marketplace add 1gr14/agents-party` +
 `/plugin install agents-party@agents-party` ставится и показывает один скилл,
-~130 токенов always-on; `mcp-publisher validate` против живого реестра — valid.
+~130 токенов always-on; `bun run check:distribution` → строка `MCP registry`
+зелёная.
 
 Дальше по файлу — сама механика (что и зачем лежит в репе) и то, что осталось.
 
@@ -64,39 +67,43 @@ Code, Cursor, Codex or any other agent» живёт в четырёх места
 каталоги начнут цитировать разное. Абстрактное «several AI agent sessions» не
 годится: человек сканирует список глазами в поиске своего инструмента.
 
-## Осталось руками
+## MCP-реестр: как перепубликовать (и грабли, на которые мы уже наступили)
 
-Пункт 1 — прямо сейчас, он занимает минуту. 2 — когда будет настроение, 3–4 —
-после запуска.
-
-### 1. Опубликовать сервер в официальном MCP-реестре
-
-Единственное, что упирается в живой GitHub-логин (device flow в браузере) и
-поэтому не сделано автоматом. `server.json` уже валиден против живого реестра, а
-0.7.2 на npm уже несёт `mcpName`, так что это буквально две команды из корня
-репы пакета:
+Запись в реестре привязана к версии, поэтому **каждый релиз нужно
+перепубликовать** — иначе агрегаторы будут показывать старую. Из корня репы
+пакета, после того как версия уехала в npm:
 
 ```sh
-mcp-publisher login github
-mcp-publisher publish
+mcp-publisher logout && mcp-publisher login github --token "$(gh auth token)" && mcp-publisher publish
 ```
 
-`mcp-publisher` уже установлен (`brew install mcp-publisher`). Namespace
-`io.github.1gr14/*` подтверждается самим GitHub-аккаунтом, заявок нет. Это самый
-недооценённый канал: агрегаторы (PulseMCP, Smithery, Glama, mcp.so и прочие
-marketplace-ы) — downstream-потребители реестра, они регулярно вычитывают
-`GET /v0.1/servers` и наполняют себя сами. Одна публикация → десяток каталогов.
-Проверка — `bun run check:distribution`, строка `MCP registry` станет зелёной.
+**`mcp-publisher login github` (device flow) для org-неймспейса не работает** —
+на этом мы потеряли полчаса. Реестр выдаёт права так: дёргает
+`GET /user/memberships/orgs` твоим GitHub-токеном и ищет `role: admin` +
+`state: active`. Но его `client_id` начинается на `Iv23`, то есть это GitHub
+App, а user-to-server токен из device flow на этот эндпоинт получает 403 — и
+реестр молча трактует это как «админских орг нет», выдавая только
+`io.github.iserdmi/*`. Ответ 403 при публикации при этом советует «сделай
+членство в орге публичным», что к делу не относится вовсе (у них на это открыт
+PR #1483, а сам симптом — issues #1527 и #1537). Лечится токеном с `read:org`
+через `--token`; `gh auth token` подходит, отдельный классический PAT с одной
+галкой `read:org` — тоже. Репозиторных прав реестру не нужно, код он не читает.
 
-Если надоест делать руками каждый релиз — у реестра есть
-`mcp-publisher login github-oidc` для GitHub Actions, шаг в `ci.yml` рядом с
-publish закрыл бы это навсегда.
+Токен живёт 5 минут, поэтому `login` и `publish` — одной цепочкой.
+
+Хочется вообще забыть — у реестра есть `mcp-publisher login github-oidc` для
+GitHub Actions: шаг в `ci.yml` рядом с publish снял бы и ручную работу, и эти
+грабли разом.
 
 Отдельно можно завести и remote-сервер (`agents-party.com/api/mcp/<token>`), но
 токен в URL в публичный реестр не кладём — если делать, то через отдельную схему
 авторизации.
 
-### 2. Пинг Agent Skills-комьюнити
+## Осталось руками
+
+Пункт 1 — когда будет настроение, 2–3 — после запуска.
+
+### 1. Пинг Agent Skills-комьюнити
 
 Мы редкий случай: скилл, который одинаково живёт в Claude Code, Cursor и Codex,
 и при этом связывает их между собой. Это интересный кейс для самого стандарта, а
@@ -105,7 +112,7 @@ publish закрыл бы это навсегда.
 [agentskills/agentskills](https://github.com/agentskills/agentskills), не через
 форму.
 
-### 3. Awesome-листы (после запуска, не раньше)
+### 2. Awesome-листы (после запуска, не раньше)
 
 Заявка от репы с 8 звёздами и от репы с сотнями читается по-разному, поэтому
 сюда идём после Show HN / Reddit / видео. Формат entry скопирован из этих же
@@ -141,10 +148,10 @@ issue-форма
 - [1gr14/agents-party](https://github.com/1gr14/agents-party) - Shared channel where Claude Code, Cursor, Codex and any other agent talk to each other, across machines
 ```
 
-**punkpeye/awesome-mcp-servers** — только после пункта 1, подаём MCP-сервер, а
-не скилл.
+**punkpeye/awesome-mcp-servers** — подаём MCP-сервер, а не скилл: он уже в
+официальном реестре, ссылаться есть на что.
 
-### 4. Соцканалы
+### 3. Соцканалы
 
 Show HN, Reddit (r/ClaudeAI, r/cursor, r/LocalLLaMA), Хабр, X, видео на
 @s\_1gr14 — это уже расписано в `PLAN.md` сайта, включая прогрев аккаунтов.

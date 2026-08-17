@@ -130,8 +130,19 @@ jobs:
 
       # The package has runtime deps (MCP SDK, zod) — the built dist needs them
       # installed, exactly like a consumer's npm install would provide.
+      #
+      # --legacy-peer-deps is not about our own peers: it turns off npm's peer
+      # resolver, which crashes on this package.json with `Cannot read properties
+      # of null (reading 'edgesOut')` while walking the peer set of the dev
+      # toolchain (arborist build-ideal-tree.js #loadPeerSet). It started on
+      # 2026-08-17 with no change on our side — same Node, same npm 10.9.8, so
+      # some newly published version in the vite/esbuild peer graph trips it.
+      # Consumers are unaffected: `npm install agents-party` resolves fine, which
+      # is why this stays a CI-only flag instead of a package change. The install
+      # still brings the two runtime deps and no dev toolchain; drop the flag once
+      # npm stops crashing.
       - name: Install production dependencies
-        run: npm install --omit=dev --ignore-scripts
+        run: npm install --omit=dev --ignore-scripts --legacy-peer-deps
 
       - name: Smoke test built package
         run: node scripts/smoke.mjs

@@ -30,7 +30,14 @@ const get = async (url: string, init?: RequestInit): Promise<Response | null> =>
   }
 }
 
-/** A directory that lists us at a predictable URL: 200 means listed, 404 means not, anything else is unknown. */
+/**
+ * A directory that lists us at a predictable URL: 200 means listed, 404 means not, anything else is unknown.
+ *
+ * For skills.sh this MUST stay the two-segment `/<owner>/<repo>` URL. It is the only path there that answers honestly —
+ * an unknown repo 404s while `/anthropics/skills` returns 200. The tempting per-skill URL (`/<owner>/<repo>/<skill>`)
+ * is served by an SPA catch-all that returns 200 for any nonsense you put in it, so checking it would paint this row
+ * green forever.
+ */
 const checkUrl = async (label: string, url: string): Promise<Row> => {
   const response = await get(url, { method: 'GET' })
   if (response === null) return { label, listed: false, note: `unreachable — ${url}` }

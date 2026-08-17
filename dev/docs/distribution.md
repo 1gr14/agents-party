@@ -99,11 +99,74 @@ GitHub Actions: шаг в `ci.yml` рядом с publish снял бы и руч
 токен в URL в публичный реестр не кладём — если делать, то через отдельную схему
 авторизации.
 
-## Осталось руками
+## Awesome-листы — подано 2026-08-17
 
-Пункт 1 — когда будет настроение, 2–3 — после запуска.
+Три PR открыты, висят на ревью мейнтейнеров:
 
-### 1. Пинг Agent Skills-комьюнити
+| Лист                                                                                                     | PR     | Куда                                              |
+| -------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------- |
+| [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers/pull/12324)               | #12324 | Communication — подан MCP-сервер, не скилл        |
+| [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills/pull/1659) (72k★) | #1659  | Collaboration & Project Management                |
+| [heilcheng/awesome-agent-skills](https://github.com/heilcheng/awesome-agent-skills/pull/425) (6k★)       | #425   | Community Skills → Productivity and Collaboration |
+
+У punkpeye в `CONTRIBUTING.md` прямо приглашают агентские PR — надо только
+добавить `🤖🤖🤖` в конец заголовка, тогда мержат по быстрой дорожке. Сделано.
+
+Статус смотреть так: `gh pr status --repo <owner>/<repo>` или зелёная строка в
+`bun run check:distribution` (он грепает README листа, так что зеленеет ровно
+после мержа).
+
+## Осталось руками — только то, что агенту делать запрещено
+
+Два листа отказывают не нам, а **автоматике**. Читать их правила буквально: там
+за нарушение банят аккаунт на репе, и это твой аккаунт, не мой.
+
+### 1. hesreallyhim/awesome-claude-code (52k★) — только веб-форма, только руками
+
+Их `CONTRIBUTING.md`, дословно: «ALL RECOMMENDATIONS MUST BE MADE USING THE WEB
+UI ISSUE FORM TEMPLATE, OR YOU RISK BEING RESTRICTED FROM INTERACTING WITH THIS
+REPOSITORY», «It is **not** possible to submit a resource recommendation using
+the `gh` CLI» и «resource recommendations must be created by human beings».
+Поэтому ни PR, ни `gh issue create` — открываешь
+[форму](https://github.com/hesreallyhim/awesome-claude-code/issues/new?template=recommend-resource.yml)
+в браузере и заполняешь. Мы проходим по возрасту (репа старше 14 дней, коммиты
+идут), так что порог не блокирует.
+
+Поля, готовые к вставке:
+
+- **Display Name** — `agents-party`
+- **Category** — `Agent Orchestration` (альтернатива — `Skills`, но там нас
+  утопит в потоке однофайловых скиллов)
+- **Link** — `https://github.com/1gr14/agents-party`
+- **Author Name** — `1gr14`
+- **Author Link** — `https://github.com/1gr14`
+- **Description** (описание, не продажа; одна строка, без эмодзи и без обращений
+  к читателю):
+
+```text
+A skill and CLI that give several agent sessions one shared channel: Claude Code, Cursor, Codex or any other agent, on one machine or across machines. Messages are addressed to everyone or to a named participant, the human reads along in the same channel, and message bodies are end-to-end encrypted so a hosted party stores only ciphertext.
+```
+
+Одна честная загвоздка: в форме есть **обязательный** чекбокс «This resource is
+specific to Claude Code». Мы в Claude Code родные — скилл, плагин-маркетплейс,
+`/party` из коробки, — но не эксклюзивны. Ставить галку или нет, решай сам; я бы
+поставил и в описании вёл с Claude Code, но врать за тебя не буду.
+
+### 2. travisvn/awesome-claude-skills (14k★) — заблокировано дважды
+
+Во-первых, минимум **10 звёзд**: «if your skill hasn't acquired a basic 10
+stars, it will be closed automatically». У нас 8 — двух не хватает. Во-вторых, у
+них прямой запрет на PR, сделанные с помощью ИИ: «PRs will be closed without
+comment». То есть это тоже руками и только после 10 звёзд. Строка для вставки в
+таблицу `### Individual Skills`:
+
+```text
+| **[agents-party](https://github.com/1gr14/agents-party)** | A shared channel where agent sessions talk to each other — Claude Code, Cursor, Codex or any other agent, on one machine or across machines |
+```
+
+Категории про multi-agent у них нет — в PR стоит предложить завести.
+
+### 3. Пинг Agent Skills-комьюнити
 
 Мы редкий случай: скилл, который одинаково живёт в Claude Code, Cursor и Codex,
 и при этом связывает их между собой. Это интересный кейс для самого стандарта, а
@@ -111,52 +174,6 @@ GitHub Actions: шаг в `ci.yml` рядом с publish снял бы и руч
 [Discord](https://discord.gg/MKPE9g8aUy) и обсуждения
 [agentskills/agentskills](https://github.com/agentskills/agentskills), не через
 форму.
-
-### 2. Awesome-листы (после запуска, не раньше)
-
-Заявка от репы с 8 звёздами и от репы с сотнями читается по-разному, поэтому
-сюда идём после Show HN / Reddit / видео. Формат entry скопирован из этих же
-списков — вставляется как есть.
-
-**hesreallyhim/awesome-claude-code** (52k★). **PR запрещены**, только
-issue-форма
-[recommend-resource](https://github.com/hesreallyhim/awesome-claude-code/issues/new?template=recommend-resource.yml);
-перед подачей прочитать `CONTRIBUTING.md` — там за игнор правил публично
-отказывают.
-
-**ComposioHQ/awesome-claude-skills** (72k★). Fork → PR в секцию
-`### Collaboration & Project Management`:
-
-```text
-- [agents-party](https://github.com/1gr14/agents-party) - One channel where your agent sessions talk to each other: Claude Code, Cursor, Codex or any other agent, on one machine or across machines. End-to-end encrypted, local files or your own server. *By [@1gr14](https://github.com/1gr14)*
-```
-
-**travisvn/awesome-claude-skills** (14k★). Fork → PR в таблицу
-`### Individual Skills`:
-
-```text
-| **[agents-party](https://github.com/1gr14/agents-party)** | A shared channel where agent sessions talk to each other — Claude Code, Cursor, Codex or any other agent, on one machine or across machines |
-```
-
-Там нет категории про multi-agent; в PR стоит предложить завести её — отдельная
-секция заметнее строки в чужой.
-
-**heilcheng/awesome-agent-skills** (6k★). Fork → PR в `## Community Skills`,
-внутри `<details>` подходящей темы (или завести свою — «Multi-agent»):
-
-```text
-- [1gr14/agents-party](https://github.com/1gr14/agents-party) - Shared channel where Claude Code, Cursor, Codex and any other agent talk to each other, across machines
-```
-
-**punkpeye/awesome-mcp-servers** — подаём MCP-сервер, а не скилл: он уже в
-официальном реестре, ссылаться есть на что.
-
-### 3. Соцканалы
-
-Show HN, Reddit (r/ClaudeAI, r/cursor, r/LocalLLaMA), Хабр, X, видео на
-@s\_1gr14 — это уже расписано в `PLAN.md` сайта, включая прогрев аккаунтов.
-Здесь только напоминание, что каталоги без этого дают мало: demo GIF расшарят,
-строчку в списке — нет.
 
 ## Чего сознательно не делаем
 
